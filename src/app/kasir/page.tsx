@@ -40,7 +40,6 @@ export default function KasirPage() {
     message: 'Memeriksa sensor RFID...',
   });
   const [receiptData, setReceiptData] = useState<any | null>(null);
-  const [simulating, setSimulating] = useState<boolean>(false);
 
   // Poll RFID status periodically
   const fetchRfidStatus = useCallback(async () => {
@@ -92,29 +91,6 @@ export default function KasirPage() {
   const handleShortcut = (val: number) => {
     setErrorMsg('');
     setNominal(val);
-  };
-
-  // Simulate RFID Tap Helper (for testing without physical card scanner)
-  const handleSimulateTap = async (uid = 'CB69FD2F') => {
-    setSimulating(true);
-    setErrorMsg('');
-    try {
-      const res = await fetch('/api/cashier/simulate-tap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        await fetchRfidStatus();
-      } else {
-        setErrorMsg(data.message || 'Gagal simulasi tap.');
-      }
-    } catch {
-      setErrorMsg('Gagal terhubung ke server.');
-    } finally {
-      setSimulating(false);
-    }
   };
 
   // Process Transaction
@@ -194,21 +170,14 @@ export default function KasirPage() {
                   }`}
                 />
                 <span className="text-xs font-bold text-[#18352A] uppercase tracking-wide">
-                  Status Kartu Siswa
+                  Sensor Kartu RFID
                 </span>
               </div>
 
-              {/* Tap simulation trigger for quick testing */}
-              <button
-                type="button"
-                onClick={() => handleSimulateTap('CB69FD2F')}
-                disabled={simulating}
-                className="text-[11px] font-semibold text-[#159447] bg-[#E8F9EE] px-2.5 py-1 rounded-lg border border-[#35C96F]/30 hover:bg-[#35C96F] hover:text-white transition-all flex items-center gap-1 active:scale-95"
-                title="Simulasi Tap Kartu RFID Arya (CB69FD2F)"
-              >
-                <Sparkles className="w-3 h-3" />
-                <span>{simulating ? 'Tapping...' : 'Simulasi Tap'}</span>
-              </button>
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#159447] bg-[#E8F9EE] px-2.5 py-1 rounded-full border border-[#35C96F]/30">
+                <span className="w-2 h-2 rounded-full bg-[#35C96F] animate-ping" />
+                <span>Alat Aktif & Sinkron</span>
+              </div>
             </div>
 
             {/* Status Content */}

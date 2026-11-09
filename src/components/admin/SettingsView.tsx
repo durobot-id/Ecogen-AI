@@ -9,10 +9,8 @@ interface SettingsViewProps {
 }
 
 export default function SettingsView({ students }: SettingsViewProps) {
-  const [testUid, setTestUid] = useState('CB69FD2F');
   const [testingDb, setTestingDb] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
-  const [simulating, setSimulating] = useState(false);
 
   const handleTestDatabase = async () => {
     setTestingDb(true);
@@ -32,37 +30,16 @@ export default function SettingsView({ students }: SettingsViewProps) {
     }
   };
 
-  const handleSimulateTap = async () => {
-    setSimulating(true);
-    try {
-      const res = await fetch('/api/cashier/simulate-tap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: testUid.trim().toUpperCase() }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(`Berhasil mengirim simulasi tap kartu UID: ${testUid} ke Firebase /Proses!`);
-      } else {
-        alert(data.message || 'Gagal simulasi tap.');
-      }
-    } catch {
-      alert('Terjadi kesalahan jaringan.');
-    } finally {
-      setSimulating(false);
-    }
-  };
-
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="bg-white rounded-2xl p-5 border border-[#E5EEE7] shadow-xs">
         <h2 className="text-xl font-bold text-[#18352A] flex items-center gap-2">
           <Settings className="w-5 h-5 text-[#35C96F]" />
-          <span>Pengaturan Sistem & Diagnostik</span>
+          <span>Pengaturan Sistem & Konektivitas</span>
         </h2>
         <p className="text-xs text-[#74857B] mt-0.5">
-          Informasi konfigurasi database Firebase, simulator RFID, dan status aplikasi
+          Informasi konfigurasi database Firebase Realtime Database dan integrasi scanner RFID fisik
         </p>
       </div>
 
@@ -103,7 +80,7 @@ export default function SettingsView({ students }: SettingsViewProps) {
             <span className="font-mono font-bold text-[#18352A]">/Siwa</span>
           </div>
           <div className="bg-[#F7FBF7] p-3 rounded-xl border border-[#E5EEE7]">
-            <span className="text-[#74857B] block">Node RFID Pending:</span>
+            <span className="text-[#74857B] block">Node RFID Scanner:</span>
             <span className="font-mono font-bold text-[#18352A]">/Proses</span>
           </div>
           <div className="bg-[#F7FBF7] p-3 rounded-xl border border-[#E5EEE7]">
@@ -113,47 +90,27 @@ export default function SettingsView({ students }: SettingsViewProps) {
         </div>
       </div>
 
-      {/* RFID Hardware Simulator */}
+      {/* Hardware Scanner Status Info */}
       <div className="bg-white rounded-2xl p-6 border border-[#E5EEE7] shadow-xs space-y-4">
         <div className="flex items-center gap-2.5 pb-3 border-b border-[#E5EEE7]">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-[#E8F9EE] text-[#159447] flex items-center justify-center">
             <Radio className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-sm text-[#18352A]">Simulator Tap Kartu RFID</h3>
+            <h3 className="font-bold text-sm text-[#18352A]">Integrasi Alat Scanner Fisik (ESP / RFID)</h3>
             <p className="text-xs text-[#74857B]">
-              Simulasikan tap kartu fisik RFID ke node /Proses untuk menguji pemotongan poin kasir
+              Alat fisik langsung mengirim UID kartu ke node /Proses dengan proteksi 1 kali tap = 1 transaksi
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 items-end">
-          <div className="flex-1">
-            <label className="text-xs font-bold text-[#18352A] block mb-1">
-              Pilih UID Siswa untuk Disimulasikan:
-            </label>
-            <select
-              value={testUid}
-              onChange={(e) => setTestUid(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-[#E5EEE7] bg-[#F7FBF7]"
-            >
-              {students.map((st) => (
-                <option key={st.uid} value={st.uid}>
-                  {st.nama} ({st.kelas}) — UID: {st.uid} — Saldo: Rp{st.poin.toLocaleString('id-ID')}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleSimulateTap}
-            disabled={simulating || !testUid}
-            className="w-full sm:w-auto py-2 px-5 rounded-xl bg-[#35C96F] hover:bg-[#159447] text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{simulating ? 'Menstimulasi...' : 'Kirim Tap Kartu Sekarang'}</span>
-          </button>
+        <div className="bg-[#F7FBF7] p-4 rounded-xl border border-[#E5EEE7] text-xs space-y-2">
+          <p className="font-bold text-[#18352A]">Spesifikasi Integrasi:</p>
+          <ul className="list-disc pl-5 text-[#74857B] space-y-1">
+            <li>Alat mengirim HTTP PUT / PATCH ke <code>/Proses/YYYY-MM-DD_HH-mm-ss.json</code></li>
+            <li>Website memvalidasi kartu aktif maksimal 60 detik sejak tap</li>
+            <li>Setelah transaksi sukses, sistem mengunci kartu menjadi status <code>used</code></li>
+          </ul>
         </div>
       </div>
 
