@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="128" fill="#F7FBF7"/>
+  <rect x="24" y="24" width="464" height="464" rx="104" stroke="#E8F9EE" stroke-width="12"/>
+  
+  <!-- Outer leaf geometric path -->
+  <path d="M256 70C360 70 420 150 420 256C420 370 340 430 256 430C172 430 92 370 92 256C92 150 152 70 256 70Z" 
+        fill="url(#eco_gradient)" />
+
+  <!-- Inner stylized eco leaf vein -->
+  <path d="M256 120C256 120 260 270 340 330" 
+        stroke="#E8F9EE" stroke-width="24" stroke-linecap="round"/>
+  <path d="M256 220C220 240 180 280 180 320" 
+        stroke="#E8F9EE" stroke-width="20" stroke-linecap="round" opacity="0.9"/>
+  <path d="M256 160V380" 
+        stroke="#FFFFFF" stroke-width="28" stroke-linecap="round"/>
+
+  <!-- Geometric accent coin / energy node -->
+  <circle cx="340" cy="180" r="32" fill="#FFFFFF" fill-opacity="0.9"/>
+  <circle cx="340" cy="180" r="18" fill="#159447"/>
+
+  <defs>
+    <linearGradient id="eco_gradient" x1="120" y1="80" x2="390" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#35C96F"/>
+      <stop offset="100%" stop-color="#159447"/>
+    </linearGradient>
+  </defs>
+</svg>
