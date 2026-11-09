@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     // Call Google Gemini API
     const ai = new GoogleGenAI({ apiKey });
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 
     const systemPrompt = `Anda adalah konsultan inovasi gamifikasi dan ekonomi poin ramah lingkungan "EcoGen AI" untuk lingkungan sekolah.
 Tugas Anda adalah merumuskan sistem penghargaan EcoPoint dan KATALOG PERTUKARAN POIN (Reward Redemption) yang SANGAT MENARIK, KREATIF, dan REALISTIS agar siswa antusias mengumpulkan serta menukarkan poin.
