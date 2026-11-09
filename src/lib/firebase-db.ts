@@ -26,18 +26,19 @@ async function fetchRTDB<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// Parse timestamp from key like "2026-11-09_19-55-57" or numeric
+// Parse timestamp from key like "2026-11-10_01-22-13" or numeric
 export function parseProcessTimestamp(key: string, createdAt?: number): number {
-  if (createdAt && typeof createdAt === 'number') {
+  if (createdAt && typeof createdAt === 'number' && createdAt > 1000000000) {
     return createdAt;
   }
 
-  // Format: YYYY-MM-DD_HH-mm-ss
+  // Format: YYYY-MM-DD_HH-mm-ss (Local time WIB UTC+7)
   const match = key.match(/^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})$/);
   if (match) {
     const [_, year, month, day, hour, min, sec] = match;
-    const date = new Date(Date.UTC(+year, +month - 1, +day, +hour - 7, +min, +sec)); // UTC+7 offset for local WIB
-    return date.getTime();
+    const isoString = `${year}-${month}-${day}T${hour}:${min}:${sec}+07:00`;
+    const parsed = new Date(isoString).getTime();
+    if (!isNaN(parsed)) return parsed;
   }
 
   const parsed = Date.parse(key.replace('_', ' '));
@@ -253,30 +254,64 @@ export const FirebaseDB = {
       throw new Error('Nominal transaksi harus lebih besar dari 0.');
     }
 
-    // 1. Identify Process & UID
+    // 1. Identify Process & UID with STRICT anti-reuse verification
     let selectedUid: string = '';
     let selectedProcessId: string = '';
 
-    if (params.targetUid && params.processId) {
-      selectedUid = params.targetUid.trim().toUpperCase();
+    if (params.processId) {
       selectedProcessId = params.processId;
+      // Fetch latest process state directly from Firebase RTDB
+      const procData = await fetchRTDB<{
+        UID: string;
+        createdAt?: number;
+        status?: string;
+        transactionId?: string;
+      }>(`Proses/${selectedProcessId}`);
+
+      if (!procData || !procData.UID) {
+        throw new Error('Data tap kartu tidak ditemukan di database. Silakan tap kartu ulang pada alat.');
+      }
+
+      if (procData.status === 'used') {
+        throw new Error(
+          'Kartu RFID ini sudah pernah digunakan untuk transaksi. 1 kali tap hanya berlaku untuk 1 kali transaksi. Silakan tap ulang kartu pada alat!'
+        );
+      }
+
+      const procTime = parseProcessTimestamp(selectedProcessId, procData.createdAt);
+      const ageSeconds = Math.max(0, Math.floor((Date.now() - procTime) / 1000));
+      if (ageSeconds > 60) {
+        throw new Error(
+          `Data tap kartu sudah kedaluwarsa (${ageSeconds} detik lalu). Maksimal 60 detik. Silakan tap kartu kembali.`
+        );
+      }
+
+      selectedUid = (procData.UID || '').trim().toUpperCase();
     } else {
       const { record, isExpired, isUsed, ageSeconds } = await this.getLatestPendingProcess(60);
       if (!record || !record.UID) {
-        throw new Error('Tidak ada kartu RFID yang terdeteksi. Silakan tap kartu.');
+        throw new Error('Tidak ada kartu RFID yang terdeteksi. Silakan tap kartu pada alat.');
       }
-      if (isUsed) {
-        throw new Error('Kartu RFID ini sudah pernah digunakan untuk transaksi sebelumnya. Silakan tap ulang.');
+      if (isUsed || record.status === 'used') {
+        throw new Error(
+          'Kartu RFID ini sudah pernah digunakan untuk transaksi. Silakan tap kartu kembali pada alat untuk transaksi baru!'
+        );
       }
       if (isExpired) {
-        throw new Error(`Data tap kartu sudah kedaluwarsa (${ageSeconds} detik lalu). Maksimal 60 detik.`);
+        throw new Error(
+          `Data tap kartu sudah kedaluwarsa (${ageSeconds} detik lalu). Maksimal 60 detik. Silakan tap ulang kartu.`
+        );
       }
 
       selectedUid = record.UID;
       selectedProcessId = record.id;
     }
 
-    // 2. Fetch Student
+    // 2. Lock process IMMEDIATELY as used to prevent any concurrent double spending
+    const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    await this.markProcessUsed(selectedProcessId, transactionId);
+
+    // 3. Fetch Student
     const student = await this.getStudentByUid(selectedUid);
     if (!student) {
       throw new Error(`Siswa dengan UID ${selectedUid} tidak ditemukan dalam database.`);
@@ -286,17 +321,16 @@ export const FirebaseDB = {
       throw new Error(`Kartu milik ${student.nama} (${student.kelas}) berstatus nonaktif.`);
     }
 
-    // 3. Balance Check
+    // 4. Balance Check
     if (student.poin < amount) {
       throw new Error(
         `Saldo poin tidak mencukupi. Saldo saat ini: Rp${student.poin.toLocaleString('id-ID')}, Transaksi: Rp${amount.toLocaleString('id-ID')}.`
       );
     }
 
-    // 4. Atomic Balance Update & Transaction Log
+    // 5. Deduct Balance
     const balanceBefore = student.poin;
     const balanceAfter = balanceBefore - amount;
-    const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
     // Update Student Balance
     await fetchRTDB(`Siwa/${selectedUid}`, {
@@ -306,11 +340,6 @@ export const FirebaseDB = {
         updatedAt: Date.now(),
       }),
     });
-
-    // Mark Process Record as Used
-    if (selectedProcessId) {
-      await this.markProcessUsed(selectedProcessId, transactionId);
-    }
 
     // Create Transaction Record
     const transactionRecord: Transaction = {

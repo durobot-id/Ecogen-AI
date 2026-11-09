@@ -23,6 +23,8 @@ interface RfidInfo {
   status: 'ready' | 'expired' | 'used' | 'unregistered' | 'waiting';
   message: string;
   ageSeconds?: number;
+  isExpired?: boolean;
+  isUsed?: boolean;
   record?: { id: string; UID: string; createdAt: number };
   student?: Student | null;
 }
@@ -147,6 +149,13 @@ export default function KasirPage() {
       // Success! Open receipt modal
       setReceiptData(data.data);
       setNominal(0);
+      // Immediately reset local RFID state so that same tap CANNOT be submitted again
+      setRfidStatus({
+        detected: false,
+        status: 'waiting',
+        message: 'Transaksi selesai. Silakan tap kartu kembali pada alat untuk transaksi baru.',
+        isUsed: true,
+      });
       await fetchRfidStatus();
     } catch {
       setErrorMsg('Terjadi kesalahan jaringan saat memproses transaksi.');
@@ -155,7 +164,13 @@ export default function KasirPage() {
     }
   };
 
-  const isCardReady = rfidStatus.status === 'ready' && rfidStatus.student;
+  const isCardReady = Boolean(
+    rfidStatus.detected &&
+    rfidStatus.status === 'ready' &&
+    rfidStatus.student &&
+    !rfidStatus.isExpired &&
+    !rfidStatus.isUsed
+  );
   const isBalanceEnough = isCardReady && (rfidStatus.student?.poin || 0) >= nominal;
 
   return (
@@ -277,14 +292,14 @@ export default function KasirPage() {
           />
         </div>
 
-        {/* Process Button */}
+        {/* Process Button with strict 1-Tap requirement */}
         <div className="pt-4">
           <button
             type="button"
             onClick={handleProcessTransaction}
-            disabled={loading || nominal <= 0}
-            className={`w-full py-4 px-6 rounded-2xl font-bold text-lg text-white transition-all shadow-md active:scale-98 flex items-center justify-center gap-2 ${
-              loading || nominal <= 0
+            disabled={loading || nominal <= 0 || !isCardReady || !isBalanceEnough}
+            className={`w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg text-white transition-all shadow-md active:scale-98 flex items-center justify-center gap-2 ${
+              loading || nominal <= 0 || !isCardReady || !isBalanceEnough
                 ? 'bg-[#CBDAD0] text-gray-500 cursor-not-allowed shadow-none'
                 : 'bg-[#35C96F] hover:bg-[#159447] shadow-[#35C96F]/25'
             }`}
@@ -294,10 +309,28 @@ export default function KasirPage() {
                 <RefreshCw className="w-5 h-5 animate-spin" />
                 <span>Memproses Pemotongan...</span>
               </>
+            ) : !isCardReady ? (
+              <>
+                <Radio className="w-5 h-5" />
+                <span>
+                  {rfidStatus.status === 'used'
+                    ? 'KARTU SUDAH DIGUNAKAN (TAP ULANG)'
+                    : rfidStatus.status === 'expired'
+                    ? 'WAKTU TAP HABIS (TAP ULANG)'
+                    : nominal <= 0
+                    ? 'MASUKKAN NOMINAL TRANSAKSI'
+                    : 'SILAKAN TAP KARTU PADA ALAT'}
+                </span>
+              </>
+            ) : !isBalanceEnough ? (
+              <>
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                <span>SALDO TIDAK MENCUKUPI</span>
+              </>
             ) : (
               <>
                 <CheckCircle className="w-5 h-5" />
-                <span>PROSES TRANSAKSI</span>
+                <span>PROSES TRANSAKSI (1x TAP)</span>
               </>
             )}
           </button>

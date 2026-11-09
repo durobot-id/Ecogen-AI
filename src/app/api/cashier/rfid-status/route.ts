@@ -46,6 +46,8 @@ export async function GET(req: NextRequest) {
       status,
       message,
       ageSeconds,
+      isExpired,
+      isUsed,
       record,
       student,
     });
