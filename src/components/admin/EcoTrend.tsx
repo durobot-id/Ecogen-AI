@@ -13,7 +13,9 @@ import {
   Flame,
   Award,
   Layers,
-  HelpCircle,
+  Search,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Transaction, PointPreset } from '@/types';
 
@@ -21,28 +23,54 @@ interface EcoTrendProps {
   initialTransactions?: Transaction[];
 }
 
+interface ActivityDataSeries {
+  id: string;
+  name: string;
+  category: string;
+  standardAmount: number;
+  totalCount: number;
+  totalPoints: number;
+  avgPerDay: string;
+  dailyPoints: {
+    dateKey: string;
+    label: string;
+    count: number;
+    points: number;
+  }[];
+}
+
+const DEFAULT_PRESETS: PointPreset[] = [
+  { id: 'tu_1', label: 'Menjaga kebersihan kelas', amount: 5000, type: 'topup', category: 'Kebersihan' },
+  { id: 'tu_2', label: 'Membuang sampah terpilah (Organik/Anorganik)', amount: 3000, type: 'topup', category: 'Daur Ulang' },
+  { id: 'tu_3', label: 'Membawa botol tumbler & kotak makan sendiri', amount: 2000, type: 'topup', category: 'Zero Waste' },
+  { id: 'tu_4', label: 'Menjalankan tugas piket harian tepat waktu', amount: 5000, type: 'topup', category: 'Kedisiplinan' },
+  { id: 'tu_5', label: 'Menyiram & merawat tanaman taman sekolah', amount: 4000, type: 'topup', category: 'Penghijauan' },
+  { id: 'tu_6', label: 'Mematikan lampu & kipas kelas saat pulang', amount: 2000, type: 'topup', category: 'Hemat Energi' },
+];
+
 export default function EcoTrend({ initialTransactions = [] }: EcoTrendProps) {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [presets, setPresets] = useState<PointPreset[]>(DEFAULT_PRESETS);
   const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState<7 | 14 | 30>(7);
-  const [selectedActivity, setSelectedActivity] = useState<string>('ALL');
   const [metricMode, setMetricMode] = useState<'count' | 'points'>('count');
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showOverviewChart, setShowOverviewChart] = useState(true);
+
+  // Active hover point for tooltip
   const [hoveredPoint, setHoveredPoint] = useState<{
-    dateStr: string;
-    value: number;
-    points: number;
+    chartId: string;
+    dateLabel: string;
     count: number;
-    activityName: string;
+    points: number;
     x: number;
     y: number;
   } | null>(null);
 
-  // Presets from server
-  const [presets, setPresets] = useState<PointPreset[]>([]);
-
-  // Fetch full transactions and presets
+  // Load transactions and presets
   useEffect(() => {
-    async function loadFullData() {
+    async function loadData() {
       setLoading(true);
       try {
         const [txRes, presetRes] = await Promise.all([
@@ -57,23 +85,23 @@ export default function EcoTrend({ initialTransactions = [] }: EcoTrendProps) {
           setTransactions(txJson.data);
         }
         if (presetJson.success && presetJson.data) {
-          const combined = [
+          const list = [
             ...(presetJson.data.topup || []),
             ...(presetJson.data.penalty || []),
           ];
-          setPresets(combined);
+          if (list.length > 0) setPresets(list);
         }
       } catch (e) {
-        console.warn('Failed to fetch trend data:', e);
+        console.warn('Failed to load trend data:', e);
       } finally {
         setLoading(false);
       }
     }
 
-    loadFullData();
+    loadData();
   }, []);
 
-  // Filtered transactions within date range
+  // Filter transactions within time range
   const rangeTransactions = useMemo(() => {
     const cutoff = Date.now() - timeRange * 24 * 60 * 60 * 1000;
     return transactions.filter(
@@ -81,30 +109,9 @@ export default function EcoTrend({ initialTransactions = [] }: EcoTrendProps) {
     );
   }, [transactions, timeRange]);
 
-  // Extract unique activity labels from presets and transactions
-  const availableActivities = useMemo(() => {
-    const set = new Set<string>();
-
-    // Add configured presets
-    presets.forEach((p) => {
-      if (p.label) set.add(p.label.trim());
-    });
-
-    // Add activities from actual transactions
-    rangeTransactions.forEach((tx) => {
-      if (tx.description && tx.type !== 'purchase') {
-        set.add(tx.description.trim());
-      }
-    });
-
-    return Array.from(set).sort();
-  }, [presets, rangeTransactions]);
-
-  // Aggregate daily data for the selected activity (or all combined across all children)
-  const dailySeries = useMemo(() => {
-    const days: { [dateKey: string]: { dateStr: string; label: string; count: number; points: number } } = {};
-
-    // Initialize all days in the range so the graph line is continuous
+  // Generate date keys for the time range
+  const dateKeys = useMemo(() => {
+    const list: { key: string; label: string; fullDate: string }[] = [];
     for (let i = timeRange - 1; i >= 0; i--) {
       const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -112,125 +119,337 @@ export default function EcoTrend({ initialTransactions = [] }: EcoTrendProps) {
         day: 'numeric',
         month: timeRange > 14 ? 'numeric' : 'short',
       });
-      days[key] = { dateStr: key, label, count: 0, points: 0 };
+      const fullDate = d.toLocaleDateString('id-ID', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+      });
+      list.push({ key, label, fullDate });
     }
+    return list;
+  }, [timeRange]);
 
-    // Populate data from transactions across all students
+  // Overall combined aggregate series (All activities combined across all children)
+  const masterSeries = useMemo(() => {
+    const map: Record<string, { count: number; points: number }> = {};
+    dateKeys.forEach((d) => {
+      map[d.key] = { count: 0, points: 0 };
+    });
+
     rangeTransactions.forEach((tx) => {
-      const d = new Date(tx.createdAt);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-      if (days[key]) {
-        // If 'ALL', count all rewards/topup/activities
-        // If specific, match description
-        const isMatch =
-          selectedActivity === 'ALL'
-            ? tx.type === 'topup' || tx.type === 'reward' || tx.type === 'adjust'
-            : tx.description?.trim().toLowerCase() === selectedActivity.toLowerCase();
-
-        if (isMatch) {
-          days[key].count += 1;
-          days[key].points += tx.amount || 0;
+      if (tx.type === 'topup' || tx.type === 'reward' || tx.type === 'adjust') {
+        const d = new Date(tx.createdAt);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        if (map[key]) {
+          map[key].count += 1;
+          map[key].points += tx.amount || 0;
         }
       }
     });
 
-    return Object.values(days);
-  }, [rangeTransactions, timeRange, selectedActivity]);
+    const points = dateKeys.map((d) => ({
+      dateKey: d.key,
+      label: d.label,
+      fullDate: d.fullDate,
+      count: map[d.key]?.count || 0,
+      points: map[d.key]?.points || 0,
+    }));
 
-  // Key stats for the selected view
-  const summaryStats = useMemo(() => {
-    const totalCount = dailySeries.reduce((sum, d) => sum + d.count, 0);
-    const totalPoints = dailySeries.reduce((sum, d) => sum + d.points, 0);
-    const avgPerDay = (totalCount / timeRange).toFixed(1);
+    const totalCount = points.reduce((sum, p) => sum + p.count, 0);
+    const totalPoints = points.reduce((sum, p) => sum + p.points, 0);
 
-    // Activity popularity rank across the range
-    const activityCounts: Record<string, { count: number; points: number }> = {};
+    return { points, totalCount, totalPoints };
+  }, [dateKeys, rangeTransactions]);
+
+  // Build individual activity series for each configured activity (1 Graph per Activity)
+  const activitiesSeries = useMemo(() => {
+    // Collect all distinct activity names from presets and existing transactions
+    const activityMap: Record<
+      string,
+      {
+        id: string;
+        name: string;
+        category: string;
+        standardAmount: number;
+      }
+    > = {};
+
+    // 1. Add configured presets
+    presets.forEach((p) => {
+      const cleanName = p.label.trim();
+      activityMap[cleanName.toLowerCase()] = {
+        id: p.id,
+        name: cleanName,
+        category: p.category || (p.type === 'topup' ? 'Reward' : 'Penyesuaian'),
+        standardAmount: p.amount,
+      };
+    });
+
+    // 2. Add any other transaction descriptions
     rangeTransactions.forEach((tx) => {
-      if (tx.description && (tx.type === 'topup' || tx.type === 'reward')) {
-        const desc = tx.description.trim();
-        if (!activityCounts[desc]) {
-          activityCounts[desc] = { count: 0, points: 0 };
+      if (tx.description && tx.type !== 'purchase') {
+        const cleanName = tx.description.trim();
+        const key = cleanName.toLowerCase();
+        if (!activityMap[key]) {
+          activityMap[key] = {
+            id: `act_${key.slice(0, 8)}`,
+            name: cleanName,
+            category: 'Aktivitas',
+            standardAmount: tx.amount || 0,
+          };
         }
-        activityCounts[desc].count += 1;
-        activityCounts[desc].points += tx.amount || 0;
       }
     });
 
-    const ranked = Object.entries(activityCounts)
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.count - a.count);
+    // Build time series for each activity across all children
+    const result: ActivityDataSeries[] = Object.values(activityMap).map((act) => {
+      const dailyCounts: Record<string, { count: number; points: number }> = {};
+      dateKeys.forEach((d) => {
+        dailyCounts[d.key] = { count: 0, points: 0 };
+      });
 
-    const topActivity = ranked[0] || null;
+      let totalCount = 0;
+      let totalPoints = 0;
 
-    return {
-      totalCount,
-      totalPoints,
-      avgPerDay,
-      topActivity,
-      rankedActivities: ranked,
-    };
-  }, [dailySeries, timeRange, rangeTransactions]);
+      rangeTransactions.forEach((tx) => {
+        if (
+          tx.description &&
+          tx.description.trim().toLowerCase() === act.name.toLowerCase()
+        ) {
+          const d = new Date(tx.createdAt);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          if (dailyCounts[key]) {
+            dailyCounts[key].count += 1;
+            dailyCounts[key].points += tx.amount || 0;
+            totalCount += 1;
+            totalPoints += tx.amount || 0;
+          }
+        }
+      });
 
-  // SVG Chart Dimensions & Coordinate Calculations
-  const chartWidth = 700;
-  const chartHeight = 220;
-  const padding = { top: 20, right: 25, bottom: 35, left: 45 };
+      const dailyPoints = dateKeys.map((d) => ({
+        dateKey: d.key,
+        label: d.label,
+        count: dailyCounts[d.key]?.count || 0,
+        points: dailyCounts[d.key]?.points || 0,
+      }));
 
-  const usableWidth = chartWidth - padding.left - padding.right;
-  const usableHeight = chartHeight - padding.top - padding.bottom;
+      const avgPerDay = (totalCount / timeRange).toFixed(1);
 
-  const maxVal = useMemo(() => {
-    const vals = dailySeries.map((d) =>
-      metricMode === 'count' ? d.count : d.points
+      return {
+        id: act.id,
+        name: act.name,
+        category: act.category,
+        standardAmount: act.standardAmount,
+        totalCount,
+        totalPoints,
+        avgPerDay,
+        dailyPoints,
+      };
+    });
+
+    // Sort activities by popularity (highest total count first)
+    return result.sort((a, b) => b.totalCount - a.totalCount);
+  }, [presets, rangeTransactions, dateKeys, timeRange]);
+
+  // Extract categories for filter
+  const categoriesList = useMemo(() => {
+    const set = new Set<string>();
+    activitiesSeries.forEach((a) => {
+      if (a.category) set.add(a.category);
+    });
+    return Array.from(set).sort();
+  }, [activitiesSeries]);
+
+  // Filtered activities to display in multi-graph view
+  const filteredActivities = useMemo(() => {
+    return activitiesSeries.filter((act) => {
+      const matchesCategory =
+        selectedCategory === 'ALL' || act.category === selectedCategory;
+      const matchesSearch =
+        act.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        act.category.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [activitiesSeries, selectedCategory, searchQuery]);
+
+  // Helper function to render a standalone SVG line/area trend graph
+  const renderTrendSvg = (
+    dataPoints: { label: string; count: number; points: number }[],
+    chartId: string,
+    width = 460,
+    height = 140
+  ) => {
+    const pad = { top: 15, right: 15, bottom: 25, left: 35 };
+    const uWidth = width - pad.left - pad.right;
+    const uHeight = height - pad.top - pad.bottom;
+
+    const values = dataPoints.map((p) =>
+      metricMode === 'count' ? p.count : p.points
     );
-    const highest = Math.max(...vals, 1);
-    // Add 15% headroom for clean look
-    return Math.ceil(highest * 1.15) || 5;
-  }, [dailySeries, metricMode]);
+    const max = Math.max(...values, 1);
+    const maxValWithHeadroom = Math.ceil(max * 1.2) || 4;
 
-  // Points mapping to SVG coordinates
-  const points = useMemo(() => {
-    const count = dailySeries.length;
-    if (count <= 1) return [];
-
-    return dailySeries.map((d, idx) => {
-      const x = padding.left + (idx / (count - 1)) * usableWidth;
-      const val = metricMode === 'count' ? d.count : d.points;
-      const y = padding.top + usableHeight - (val / maxVal) * usableHeight;
-      return { x, y, data: d, value: val };
+    const coords = dataPoints.map((p, idx) => {
+      const x = pad.left + (idx / Math.max(1, dataPoints.length - 1)) * uWidth;
+      const val = metricMode === 'count' ? p.count : p.points;
+      const y = pad.top + uHeight - (val / maxValWithHeadroom) * uHeight;
+      return { x, y, val, p };
     });
-  }, [dailySeries, metricMode, maxVal, usableWidth, usableHeight, padding]);
 
-  // SVG Path strings (Smooth Line & Gradient Area)
-  const linePath = useMemo(() => {
-    if (points.length === 0) return '';
-    return points.reduce((path, pt, idx) => {
-      if (idx === 0) return `M ${pt.x} ${pt.y}`;
-      // Draw smooth line
-      return `${path} L ${pt.x} ${pt.y}`;
+    const linePath = coords.reduce((acc, pt, idx) => {
+      return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
     }, '');
-  }, [points]);
 
-  const areaPath = useMemo(() => {
-    if (points.length === 0) return '';
-    const first = points[0];
-    const last = points[points.length - 1];
-    const groundY = padding.top + usableHeight;
-    return `${linePath} L ${last.x} ${groundY} L ${first.x} ${groundY} Z`;
-  }, [linePath, points, padding, usableHeight]);
+    const areaPath =
+      coords.length > 0
+        ? `${linePath} L ${coords[coords.length - 1].x} ${pad.top + uHeight} L ${coords[0].x} ${pad.top + uHeight} Z`
+        : '';
+
+    return (
+      <div className="relative w-full overflow-hidden select-none">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible">
+          <defs>
+            <linearGradient id={`grad_${chartId}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#35C96F" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#35C96F" stopOpacity="0.0" />
+            </linearGradient>
+          </defs>
+
+          {/* Horizontal grid lines */}
+          {[0, 0.5, 1].map((r) => {
+            const y = pad.top + uHeight * (1 - r);
+            const valLabel = Math.round(maxValWithHeadroom * r);
+            return (
+              <g key={r}>
+                <line
+                  x1={pad.left}
+                  y1={y}
+                  x2={width - pad.right}
+                  y2={y}
+                  stroke="#E5EEE7"
+                  strokeDasharray="3 3"
+                  strokeWidth="1"
+                />
+                <text
+                  x={pad.left - 6}
+                  y={y + 3}
+                  textAnchor="end"
+                  fill="#74857B"
+                  fontSize="9"
+                  fontWeight="500"
+                >
+                  {metricMode === 'count'
+                    ? valLabel
+                    : valLabel >= 1000
+                    ? `${Math.round(valLabel / 1000)}k`
+                    : valLabel}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Area under curve */}
+          {areaPath && <path d={areaPath} fill={`url(#grad_${chartId})`} />}
+
+          {/* Main Stroke line */}
+          {linePath && (
+            <path
+              d={linePath}
+              fill="none"
+              stroke="#35C96F"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+
+          {/* Interactive Dots and X-axis Labels */}
+          {coords.map((pt, idx) => {
+            const showLabel =
+              timeRange <= 7
+                ? true
+                : timeRange <= 14
+                ? idx % 2 === 0
+                : idx % 4 === 0 || idx === coords.length - 1;
+
+            const isHovered =
+              hoveredPoint?.chartId === chartId &&
+              hoveredPoint.dateLabel === pt.p.label;
+
+            return (
+              <g key={idx}>
+                <circle
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={isHovered ? 5.5 : 3.5}
+                  fill={isHovered ? '#159447' : '#FFFFFF'}
+                  stroke="#35C96F"
+                  strokeWidth="2"
+                  className="cursor-pointer transition-all duration-150"
+                  onMouseEnter={() =>
+                    setHoveredPoint({
+                      chartId,
+                      dateLabel: pt.p.label,
+                      count: pt.p.count,
+                      points: pt.p.points,
+                      x: pt.x,
+                      y: pt.y,
+                    })
+                  }
+                  onMouseLeave={() => setHoveredPoint(null)}
+                />
+
+                {showLabel && (
+                  <text
+                    x={pt.x}
+                    y={height - 6}
+                    textAnchor="middle"
+                    fill="#74857B"
+                    fontSize="9"
+                    fontWeight="500"
+                  >
+                    {pt.p.label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Hover Tooltip */}
+        {hoveredPoint?.chartId === chartId && (
+          <div
+            className="absolute pointer-events-none bg-[#18352A] text-white px-2.5 py-1.5 rounded-xl shadow-lg text-[11px] z-20 space-y-0.5 transform -translate-x-1/2 -translate-y-full"
+            style={{
+              left: `${(hoveredPoint.x / width) * 100}%`,
+              top: `${(hoveredPoint.y / height) * 100 - 6}%`,
+            }}
+          >
+            <p className="font-semibold text-emerald-300">{hoveredPoint.dateLabel}</p>
+            <div className="flex items-center gap-2">
+              <span>{hoveredPoint.count} aksi</span>
+              <span className="text-[#35C96F] font-bold">
+                Rp{hoveredPoint.points.toLocaleString('id-ID')}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header & Global Filters */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-[#18352A] flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-[#35C96F]" />
-            <span>Eco-Trend</span>
+            <span>Eco-Trend Kegiatan</span>
           </h2>
           <p className="text-xs text-[#74857B] mt-0.5">
-            Grafik tren aktivitas ramah lingkungan seluruh siswa sesuai konfigurasi preset
+            Grafik tren untuk setiap kegiatan ramah lingkungan seluruh siswa
           </p>
         </div>
 
@@ -257,15 +476,14 @@ export default function EcoTrend({ initialTransactions = [] }: EcoTrendProps) {
         </div>
       </div>
 
-      {/* 4 Summary Insight Cards */}
+      {/* 4 Summary Highlight Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Aksi */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs">
           <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
-            Total Aksi Dilakukan
+            Total Seluruh Aksi
           </p>
           <p className="text-2xl sm:text-3xl font-extrabold text-[#18352A] mt-1">
-            {summaryStats.totalCount}{' '}
+            {masterSeries.totalCount}{' '}
             <span className="text-xs font-normal text-[#74857B]">kali</span>
           </p>
           <p className="text-[11px] text-[#20A65A] font-semibold mt-2 inline-flex items-center gap-1">
@@ -274,75 +492,98 @@ export default function EcoTrend({ initialTransactions = [] }: EcoTrendProps) {
           </p>
         </div>
 
-        {/* Total Poin Terkumpul */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs">
           <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
-            Poin Aksi Terkumpul
+            Poin Aksi Beredar
           </p>
           <p className="text-2xl sm:text-3xl font-extrabold text-[#159447] mt-1">
-            Rp{summaryStats.totalPoints.toLocaleString('id-ID')}
+            Rp{masterSeries.totalPoints.toLocaleString('id-ID')}
           </p>
           <p className="text-[11px] text-[#74857B] mt-2">
-            Apresiasi kebiasaan hijau
+            Apresiasi kebiasaan hijau siswa
           </p>
         </div>
 
-        {/* Rata-Rata Harian */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs">
           <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
-            Rerata Aksi Harian
+            Total Jenis Kegiatan
           </p>
           <p className="text-2xl sm:text-3xl font-extrabold text-[#18352A] mt-1">
-            {summaryStats.avgPerDay}{' '}
-            <span className="text-xs font-normal text-[#74857B]">aksi / hari</span>
+            {activitiesSeries.length}{' '}
+            <span className="text-xs font-normal text-[#74857B]">kegiatan</span>
           </p>
           <p className="text-[11px] text-[#74857B] mt-2">
-            Konsistensi kegiatan siswa
+            Konfigurasi preset aktif
           </p>
         </div>
 
-        {/* Kegiatan Terpopuler */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs">
           <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider flex items-center gap-1">
             <Flame className="w-3.5 h-3.5 text-amber-500" />
-            <span>Kegiatan Terbanyak</span>
+            <span>Kegiatan Paling Aktif</span>
           </p>
           <p className="text-sm font-bold text-[#18352A] mt-1 line-clamp-1 capitalize">
-            {summaryStats.topActivity?.name || 'Belum ada data'}
+            {activitiesSeries[0]?.name || 'Belum ada data'}
           </p>
           <p className="text-xs text-[#159447] font-extrabold mt-1">
-            {summaryStats.topActivity
-              ? `${summaryStats.topActivity.count}x aksi tercatat`
-              : '-'}
+            {activitiesSeries[0] ? `${activitiesSeries[0].totalCount}x aksi dicatat` : '-'}
           </p>
         </div>
       </div>
 
-      {/* Main Trend Chart Card */}
-      <div className="bg-white rounded-2xl p-5 border border-[#E5EEE7] shadow-xs space-y-4">
-        {/* Controls Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E5EEE7]">
-          {/* Activity Dropdown Filter */}
+      {/* Overview Chart (Master Aggregate) - Collapsible */}
+      <div className="bg-white rounded-2xl border border-[#E5EEE7] shadow-xs overflow-hidden">
+        <div
+          onClick={() => setShowOverviewChart(!showOverviewChart)}
+          className="p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-[#F7FBF7] transition-colors"
+        >
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-[#74857B]" />
-            <select
-              value={selectedActivity}
-              onChange={(e) => setSelectedActivity(e.target.value)}
-              className="text-xs font-bold text-[#18352A] bg-[#F7FBF7] border border-[#E5EEE7] rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#35C96F]"
-            >
-              <option value="ALL">
-                Semua Kegiatan (Gabungan Seluruh Anak)
-              </option>
-              {availableActivities.map((act) => (
-                <option key={act} value={act}>
-                  {act}
-                </option>
-              ))}
-            </select>
+            <Layers className="w-4 h-4 text-[#35C96F]" />
+            <h3 className="font-bold text-sm sm:text-base text-[#18352A]">
+              Grafik Tren Total Seluruh Kegiatan (Gabungan)
+            </h3>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-[#E8F9EE] text-[#159447] font-semibold hidden sm:inline">
+              Semua Anak Menjadi 1 Grafik
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-[#74857B]">
+            <span>{showOverviewChart ? 'Tutup' : 'Buka Grafik'}</span>
+            {showOverviewChart ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </div>
+        </div>
+
+        {showOverviewChart && (
+          <div className="p-5 pt-0 border-t border-[#E5EEE7] space-y-3">
+            <div className="flex items-center justify-between text-xs text-[#74857B] pt-3">
+              <span>Kurva agregat total seluruh aksi hijau ({timeRange} hari terakhir)</span>
+              <span className="font-semibold text-[#18352A]">
+                Mode: {metricMode === 'count' ? 'Jumlah Aksi' : 'Total EcoPoint (Rp)'}
+              </span>
+            </div>
+            {renderTrendSvg(masterSeries.points, 'master_overview', 700, 160)}
+          </div>
+        )}
+      </div>
+
+      {/* FILTER & CONTROL BAR FOR MULTI-CHARTS */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-base text-[#18352A] flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-[#35C96F]" />
+              <span>Grafik Tren per Kegiatan ({filteredActivities.length} Grafik)</span>
+            </h3>
+            <p className="text-xs text-[#74857B] mt-0.5">
+              Setiap kegiatan memiliki 1 grafik mandiri untuk memantau perkembangannya
+            </p>
           </div>
 
-          {/* Metric Toggle: Frekuensi vs Nominal Poin */}
-          <div className="inline-flex p-1 bg-[#F7FBF7] rounded-xl border border-[#E5EEE7] text-xs font-semibold self-start sm:self-auto">
+          {/* Metric Toggle: Frekuensi vs Rupiah */}
+          <div className="inline-flex p-1 bg-[#F7FBF7] rounded-xl border border-[#E5EEE7] text-xs font-semibold self-start md:self-auto">
             <button
               type="button"
               onClick={() => setMetricMode('count')}
@@ -352,7 +593,7 @@ export default function EcoTrend({ initialTransactions = [] }: EcoTrendProps) {
                   : 'text-[#74857B]'
               }`}
             >
-              Jumlah Aksi (Frekuensi)
+              Jumlah Aksi
             </button>
             <button
               type="button"
@@ -368,240 +609,117 @@ export default function EcoTrend({ initialTransactions = [] }: EcoTrendProps) {
           </div>
         </div>
 
-        {/* SVG Interactive Chart */}
-        <div className="relative w-full overflow-hidden select-none">
-          <svg
-            viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-            className="w-full h-auto overflow-visible font-sans"
-          >
-            <defs>
-              <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#35C96F" stopOpacity="0.35" />
-                <stop offset="100%" stopColor="#35C96F" stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
-
-            {/* Horizontal Grid lines */}
-            {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-              const y = padding.top + usableHeight * (1 - ratio);
-              const labelVal = Math.round(maxVal * ratio);
-              return (
-                <g key={ratio}>
-                  <line
-                    x1={padding.left}
-                    y1={y}
-                    x2={chartWidth - padding.right}
-                    y2={y}
-                    stroke="#E5EEE7"
-                    strokeDasharray="4 4"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x={padding.left - 8}
-                    y={y + 4}
-                    textAnchor="end"
-                    fill="#74857B"
-                    fontSize="10"
-                    fontWeight="500"
-                  >
-                    {metricMode === 'count'
-                      ? labelVal
-                      : labelVal >= 1000
-                      ? `${(labelVal / 1000).toFixed(0)}k`
-                      : labelVal}
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* Gradient Area under line */}
-            {areaPath && <path d={areaPath} fill="url(#trendGradient)" />}
-
-            {/* Main Trend Line */}
-            {linePath && (
-              <path
-                d={linePath}
-                fill="none"
-                stroke="#35C96F"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
-
-            {/* Interactive Data Dots & X-axis Labels */}
-            {points.map((pt, idx) => {
-              const showLabel =
-                timeRange <= 14
-                  ? true
-                  : idx % 3 === 0 || idx === points.length - 1;
-
-              return (
-                <g key={idx}>
-                  {/* Dot */}
-                  <circle
-                    cx={pt.x}
-                    cy={pt.y}
-                    r={hoveredPoint?.dateStr === pt.data.dateStr ? '6' : '4'}
-                    fill={hoveredPoint?.dateStr === pt.data.dateStr ? '#159447' : '#FFFFFF'}
-                    stroke="#35C96F"
-                    strokeWidth="2.5"
-                    className="cursor-pointer transition-all duration-150"
-                    onMouseEnter={() =>
-                      setHoveredPoint({
-                        dateStr: pt.data.dateStr,
-                        value: pt.value,
-                        points: pt.data.points,
-                        count: pt.data.count,
-                        activityName:
-                          selectedActivity === 'ALL'
-                            ? 'Semua Kegiatan'
-                            : selectedActivity,
-                        x: pt.x,
-                        y: pt.y,
-                      })
-                    }
-                    onMouseLeave={() => setHoveredPoint(null)}
-                  />
-
-                  {/* Date Label on X Axis */}
-                  {showLabel && (
-                    <text
-                      x={pt.x}
-                      y={chartHeight - 8}
-                      textAnchor="middle"
-                      fill="#74857B"
-                      fontSize="10"
-                      fontWeight="500"
-                    >
-                      {pt.data.label}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-          </svg>
-
-          {/* Floating Tooltip */}
-          {hoveredPoint && (
-            <div
-              className="absolute pointer-events-none bg-[#18352A] text-white p-2.5 rounded-xl shadow-xl text-xs z-20 space-y-1 transform -translate-x-1/2 -translate-y-full transition-all"
-              style={{
-                left: `${(hoveredPoint.x / chartWidth) * 100}%`,
-                top: `${(hoveredPoint.y / chartHeight) * 100 - 8}%`,
-              }}
-            >
-              <p className="font-bold text-[11px] text-emerald-300">
-                {new Date(hoveredPoint.dateStr).toLocaleDateString('id-ID', {
-                  weekday: 'short',
-                  day: 'numeric',
-                  month: 'short',
-                })}
-              </p>
-              <p className="text-[11px] text-gray-200">
-                {hoveredPoint.activityName}
-              </p>
-              <div className="pt-1 border-t border-emerald-900/60 flex items-center justify-between gap-3 text-xs">
-                <span>
-                  <strong>{hoveredPoint.count}</strong> aksi
-                </span>
-                <span className="text-[#35C96F] font-extrabold">
-                  Rp{hoveredPoint.points.toLocaleString('id-ID')}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Legend / Status Note */}
-        <div className="flex items-center justify-between pt-2 text-xs text-[#74857B] border-t border-[#E5EEE7]">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-[#35C96F]" />
-            <span className="font-semibold text-[#18352A]">
-              {selectedActivity === 'ALL'
-                ? 'Seluruh Aktivitas Gabungan'
-                : selectedActivity}
-            </span>
+        {/* Filter Row: Category Pills & Search */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-[#E5EEE7]">
+          {/* Search activity */}
+          <div className="sm:col-span-2 relative">
+            <Search className="w-4 h-4 text-[#74857B] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari nama kegiatan..."
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] bg-[#F7FBF7]"
+            />
           </div>
-          <span>Arahkan kursor pada titik untuk detail harian</span>
+
+          {/* Category Filter */}
+          <div>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] bg-[#F7FBF7] text-[#18352A] font-semibold"
+            >
+              <option value="ALL">Semua Kategori</option>
+              {categoriesList.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Activity Breakdown Ranking (Horizontal Bar Comparison) */}
-      <div className="bg-white rounded-2xl p-5 border border-[#E5EEE7] shadow-xs space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[#E5EEE7]">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-[#35C96F]" />
-            <h3 className="font-bold text-base text-[#18352A]">
-              Distribusi Pelaksanaan Kegiatan Siswa
-            </h3>
-          </div>
-          <span className="text-xs text-[#74857B]">
-            Data {timeRange} Hari Terakhir
-          </span>
+      {/* MULTI-CHART GRID: TIAP KEGIATAN 1 GRAFIK */}
+      {loading ? (
+        <div className="p-12 text-center text-sm text-[#74857B] bg-white rounded-2xl border border-[#E5EEE7]">
+          Memuat grafik tren kegiatan...
         </div>
-
-        <div className="space-y-3">
-          {summaryStats.rankedActivities.length === 0 ? (
-            <p className="text-xs text-[#74857B] py-6 text-center">
-              Belum ada aktivitas tercatat pada rentang waktu ini.
-            </p>
-          ) : (
-            summaryStats.rankedActivities.map((act, idx) => {
-              const maxCount = summaryStats.rankedActivities[0]?.count || 1;
-              const barWidthPct = Math.max(8, (act.count / maxCount) * 100);
-              const shareOfTotal =
-                summaryStats.totalCount > 0
-                  ? ((act.count / summaryStats.totalCount) * 100).toFixed(1)
-                  : '0';
-
-              return (
-                <div
-                  key={act.name}
-                  onClick={() => setSelectedActivity(act.name)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                    selectedActivity === act.name
-                      ? 'bg-[#E8F9EE] border-[#35C96F] ring-1 ring-[#35C96F]'
-                      : 'bg-[#F7FBF7] border-[#E5EEE7] hover:border-[#35C96F] hover:bg-white'
-                  }`}
-                  title="Klik untuk melihat grafik tren kegiatan ini"
-                >
-                  <div className="flex items-center justify-between text-xs mb-1.5">
-                    <div className="flex items-center gap-2 min-w-0 pr-2">
-                      <span className="w-5 h-5 rounded-full bg-white border border-[#E5EEE7] text-[10px] font-bold text-[#18352A] flex items-center justify-center shrink-0">
-                        {idx + 1}
-                      </span>
-                      <span className="font-bold text-[#18352A] truncate">
+      ) : filteredActivities.length === 0 ? (
+        <div className="p-12 text-center text-sm text-[#74857B] bg-white rounded-2xl border border-[#E5EEE7]">
+          Tidak ada kegiatan yang cocok dengan filter pencarian.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {filteredActivities.map((act, idx) => {
+            return (
+              <div
+                key={act.id}
+                className="bg-white rounded-2xl p-5 border border-[#E5EEE7] shadow-xs hover:border-[#35C96F]/50 transition-all space-y-4 flex flex-col justify-between"
+              >
+                {/* Activity Header */}
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 pr-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-5 h-5 rounded-full bg-[#E8F9EE] text-[#159447] text-[10px] font-bold flex items-center justify-center shrink-0 border border-[#35C96F]/30">
+                          #{idx + 1}
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#F7FBF7] text-[#74857B] border border-[#E5EEE7] uppercase tracking-wide">
+                          {act.category}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-sm sm:text-base text-[#18352A] leading-snug">
                         {act.name}
-                      </span>
+                      </h4>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="font-extrabold text-[#159447] text-sm">
-                        {act.count} kali
-                      </span>
-                      <span className="text-[11px] text-[#74857B] ml-1.5">
-                        (Rp{act.points.toLocaleString('id-ID')})
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-[#E8F9EE] text-[#159447] border border-[#35C96F]/30">
+                        +Rp{act.standardAmount.toLocaleString('id-ID')}
                       </span>
                     </div>
                   </div>
 
-                  {/* Horizontal Bar */}
-                  <div className="w-full bg-[#E5EEE7] h-2 rounded-full overflow-hidden">
-                    <div
-                      className="bg-[#35C96F] h-full rounded-full transition-all duration-500"
-                      style={{ width: `${barWidthPct}%` }}
-                    />
+                  {/* Stat Metrics Row */}
+                  <div className="grid grid-cols-3 gap-2 mt-3 p-2.5 rounded-xl bg-[#F7FBF7] border border-[#E5EEE7] text-center text-xs">
+                    <div>
+                      <span className="text-[10px] text-[#74857B] block">Total Aksi</span>
+                      <span className="font-extrabold text-[#18352A]">
+                        {act.totalCount}x
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[#74857B] block">Total Poin</span>
+                      <span className="font-extrabold text-[#159447]">
+                        Rp{act.totalPoints.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[#74857B] block">Rerata / Hari</span>
+                      <span className="font-bold text-[#18352A]">
+                        {act.avgPerDay} aksi
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[10px] text-[#74857B] block mt-1">
-                    Kontribusi {shareOfTotal}% dari total aksi ramah lingkungan
-                  </span>
                 </div>
-              );
-            })
-          )}
+
+                {/* Individual Activity SVG Trend Chart */}
+                <div className="pt-2">
+                  <div className="flex items-center justify-between text-[11px] text-[#74857B] mb-1">
+                    <span className="font-semibold text-[#18352A]">
+                      Tren Harian ({timeRange} Hari Terakhir)
+                    </span>
+                    <span>Seluruh Siswa</span>
+                  </div>
+                  {renderTrendSvg(act.dailyPoints, `act_chart_${act.id}`, 460, 130)}
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
   );
 }
