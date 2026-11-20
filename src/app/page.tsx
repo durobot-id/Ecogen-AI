@@ -86,14 +86,14 @@ export default function HomePage() {
                       AI
                     </span>
                   </div>
-                  <p className="text-sm text-[#74857B] mt-1 max-w-xs mx-auto">
-                    Aplikasi Pengelolaan & Transaksi Pembayaran EcoPoint Siswa
+                  <p className="text-sm text-[#74857B] mt-1">
+                    Kelola & Transaksi EcoPoint Siswa
                   </p>
                 </div>
               </div>
 
               {/* Menu Cards */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-[#74857B] text-center">
                   Pilih Mode Akses
                 </p>
@@ -102,18 +102,18 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => setSelectedRole('kasir')}
-                  className="w-full text-left bg-white p-5 rounded-2xl border border-[#E5EEE7] hover:border-[#35C96F] shadow-sm hover:shadow-md transition-all group active:scale-98 flex items-center justify-between"
+                  className="w-full text-left bg-white p-5 rounded-2xl border border-[#E5EEE7] hover:border-[#35C96F] shadow-xs hover:shadow-md transition-all group active:scale-98 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-13 h-13 rounded-xl bg-[#E8F9EE] border border-[#35C96F]/30 flex items-center justify-center text-[#159447] group-hover:scale-105 transition-transform">
-                      <Calculator className="w-7 h-7" />
+                    <div className="w-12 h-12 rounded-xl bg-[#E8F9EE] border border-[#35C96F]/30 flex items-center justify-center text-[#159447] group-hover:scale-105 transition-transform">
+                      <Calculator className="w-6 h-6" />
                     </div>
                     <div>
-                      <h2 className="font-bold text-lg text-[#18352A] group-hover:text-[#159447] transition-colors">
+                      <h2 className="font-bold text-base text-[#18352A] group-hover:text-[#159447] transition-colors">
                         Kasir
                       </h2>
                       <p className="text-xs text-[#74857B] mt-0.5">
-                        Transaksi cepat pemotongan poin via kartu RFID
+                        Transaksi pemotongan poin kartu RFID
                       </p>
                     </div>
                   </div>
@@ -126,18 +126,18 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => setSelectedRole('admin')}
-                  className="w-full text-left bg-white p-5 rounded-2xl border border-[#E5EEE7] hover:border-[#35C96F] shadow-sm hover:shadow-md transition-all group active:scale-98 flex items-center justify-between"
+                  className="w-full text-left bg-white p-5 rounded-2xl border border-[#E5EEE7] hover:border-[#35C96F] shadow-xs hover:shadow-md transition-all group active:scale-98 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-13 h-13 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#159447] group-hover:scale-105 transition-transform">
-                      <ShieldCheck className="w-7 h-7" />
+                    <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#159447] group-hover:scale-105 transition-transform">
+                      <ShieldCheck className="w-6 h-6" />
                     </div>
                     <div>
-                      <h2 className="font-bold text-lg text-[#18352A] group-hover:text-[#159447] transition-colors">
+                      <h2 className="font-bold text-base text-[#18352A] group-hover:text-[#159447] transition-colors">
                         Admin
                       </h2>
                       <p className="text-xs text-[#74857B] mt-0.5">
-                        Kelola data siswa, saldo, riwayat & strategi AI
+                        Kelola data siswa, poin & strategi AI
                       </p>
                     </div>
                   </div>
@@ -148,10 +148,10 @@ export default function HomePage() {
               </div>
 
               {/* Footer info */}
-              <div className="text-center pt-4">
-                <div className="inline-flex items-center gap-1.5 text-[11px] text-[#74857B] bg-white px-3 py-1.5 rounded-full border border-[#E5EEE7]">
-                  <Sparkles className="w-3.5 h-3.5 text-[#35C96F]" />
-                  <span>Didukung Firebase Realtime Database & Gemini AI</span>
+              <div className="text-center pt-2">
+                <div className="inline-flex items-center gap-1.5 text-[11px] text-[#74857B] bg-white px-3 py-1 rounded-full border border-[#E5EEE7]">
+                  <Sparkles className="w-3 h-3 text-[#35C96F]" />
+                  <span>EcoGen AI • Sistem EcoPoint</span>
                 </div>
               </div>
             </div>

@@ -36,10 +36,10 @@ export default function SettingsView({ students }: SettingsViewProps) {
       <div className="bg-white rounded-2xl p-5 border border-[#E5EEE7] shadow-xs">
         <h2 className="text-xl font-bold text-[#18352A] flex items-center gap-2">
           <Settings className="w-5 h-5 text-[#35C96F]" />
-          <span>Pengaturan Sistem & Konektivitas</span>
+          <span>Pengaturan Sistem</span>
         </h2>
         <p className="text-xs text-[#74857B] mt-0.5">
-          Informasi konfigurasi database Firebase Realtime Database dan integrasi scanner RFID fisik
+          Status database Firebase dan koneksi scanner RFID
         </p>
       </div>
 
@@ -53,7 +53,7 @@ export default function SettingsView({ students }: SettingsViewProps) {
             <div>
               <h3 className="font-bold text-sm text-[#18352A]">Firebase Realtime Database</h3>
               <p className="text-xs text-[#74857B]">
-                https://ecopoint-database-default-rtdb.asia-southeast1.firebasedatabase.app
+                ecopoint-database-default-rtdb
               </p>
             </div>
           </div>
@@ -84,7 +84,7 @@ export default function SettingsView({ students }: SettingsViewProps) {
             <span className="font-mono font-bold text-[#18352A]">/Proses</span>
           </div>
           <div className="bg-[#F7FBF7] p-3 rounded-xl border border-[#E5EEE7]">
-            <span className="text-[#74857B] block">Node Ledger Transaksi:</span>
+            <span className="text-[#74857B] block">Node Transaksi:</span>
             <span className="font-mono font-bold text-[#18352A]">/Transaksi</span>
           </div>
         </div>
@@ -97,9 +97,9 @@ export default function SettingsView({ students }: SettingsViewProps) {
             <Radio className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-sm text-[#18352A]">Integrasi Alat Scanner Fisik (ESP / RFID)</h3>
+            <h3 className="font-bold text-sm text-[#18352A]">Integrasi Alat Scanner Fisik</h3>
             <p className="text-xs text-[#74857B]">
-              Alat fisik langsung mengirim UID kartu ke node /Proses dengan proteksi 1 kali tap = 1 transaksi
+              Proteksi 1 kali tap = 1 transaksi
             </p>
           </div>
         </div>
@@ -107,9 +107,9 @@ export default function SettingsView({ students }: SettingsViewProps) {
         <div className="bg-[#F7FBF7] p-4 rounded-xl border border-[#E5EEE7] text-xs space-y-2">
           <p className="font-bold text-[#18352A]">Spesifikasi Integrasi:</p>
           <ul className="list-disc pl-5 text-[#74857B] space-y-1">
-            <li>Alat mengirim HTTP PUT / PATCH ke <code>/Proses/YYYY-MM-DD_HH-mm-ss.json</code></li>
-            <li>Website memvalidasi kartu aktif maksimal 60 detik sejak tap</li>
-            <li>Setelah transaksi sukses, sistem mengunci kartu menjadi status <code>used</code></li>
+            <li>Alat mengirim data ke <code>/Proses/YYYY-MM-DD_HH-mm-ss.json</code></li>
+            <li>Kartu aktif maksimal 60 detik sejak tap</li>
+            <li>Status otomatis dikunci menjadi <code>used</code> setelah transaksi</li>
           </ul>
         </div>
       </div>
@@ -118,18 +118,18 @@ export default function SettingsView({ students }: SettingsViewProps) {
       <div className="bg-white rounded-2xl p-6 border border-[#E5EEE7] shadow-xs space-y-3">
         <div className="flex items-center gap-2 text-sm font-bold text-[#18352A]">
           <ShieldCheck className="w-4 h-4 text-[#35C96F]" />
-          <span>Informasi Keamanan & Kredensial Prototipe</span>
+          <span>Keamanan Sesi & PIN</span>
         </div>
         <p className="text-xs text-[#74857B]">
-          Sistem menggunakan verifikasi PIN di sisi server dengan HttpOnly JWT session cookie.
+          Sistem menggunakan verifikasi PIN server-side dengan session cookie HttpOnly.
         </p>
         <div className="grid grid-cols-2 gap-3 text-xs pt-1">
           <div className="bg-[#F7FBF7] p-3 rounded-xl border border-[#E5EEE7]">
-            <span className="text-[#74857B] block">PIN Kasir Bawaan:</span>
+            <span className="text-[#74857B] block">PIN Kasir:</span>
             <span className="font-mono font-bold text-[#18352A]">1234</span>
           </div>
           <div className="bg-[#F7FBF7] p-3 rounded-xl border border-[#E5EEE7]">
-            <span className="text-[#74857B] block">PIN Admin Bawaan:</span>
+            <span className="text-[#74857B] block">PIN Admin:</span>
             <span className="font-mono font-bold text-[#18352A]">4321</span>
           </div>
         </div>

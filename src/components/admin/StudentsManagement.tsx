@@ -486,12 +486,12 @@ export default function StudentsManagement({
                       }`}
                     />
                     <span className="text-xs font-bold text-[#18352A]">
-                      Deteksi Kartu RFID Fisik
+                      Sensor RFID
                     </span>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-[#E8F9EE] text-[#159447] border border-[#35C96F]/30 flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
-                    <span>Auto-Sync Aktif</span>
+                    <span>Sinkron</span>
                   </span>
                 </div>
 
@@ -511,12 +511,12 @@ export default function StudentsManagement({
 
                     {liveTap.isRegistered ? (
                       <div className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200">
-                        ⚠️ Kartu ini sudah terdaftar atas nama: <strong>{liveTap.student?.nama}</strong> ({liveTap.student?.kelas})
+                        Kartu sudah terdaftar: <strong>{liveTap.student?.nama}</strong> ({liveTap.student?.kelas})
                       </div>
                     ) : (
                       <div className="text-[11px] text-[#159447] bg-[#E8F9EE] p-2 rounded-lg border border-[#35C96F]/20 flex items-center gap-1.5 font-medium">
                         <Check className="w-3.5 h-3.5 shrink-0" />
-                        <span>Kartu baru terdeteksi! UID otomatis disinkronkan ke input di bawah.</span>
+                        <span>Kartu terdeteksi. UID otomatis terisi.</span>
                       </div>
                     )}
 
@@ -527,14 +527,14 @@ export default function StudentsManagement({
                         className="text-xs font-bold text-[#159447] hover:underline flex items-center gap-1"
                       >
                         <RefreshCw className="w-3 h-3" />
-                        <span>Gunakan UID Kartu Ini ({liveTap.record.UID})</span>
+                        <span>Gunakan UID ({liveTap.record.UID})</span>
                       </button>
                     )}
                   </div>
                 ) : (
                   <div className="bg-white/60 p-3 rounded-xl border border-dashed border-[#CBDAD0] text-center text-xs text-[#74857B] space-y-1">
                     <p className="font-medium text-[#18352A]">Tempelkan kartu baru pada alat scanner...</p>
-                    <p className="text-[11px]">UID kartu akan otomatis terbaca dan terisi tanpa perlu mengetik manual.</p>
+                    <p className="text-[11px]">UID otomatis terisi saat kartu ditempelkan.</p>
                   </div>
                 )}
               </div>
@@ -542,18 +542,18 @@ export default function StudentsManagement({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-bold text-[#18352A]">
-                    UID Kartu RFID (Hex) *
+                    UID Kartu RFID *
                   </label>
                   {formUid && formUid === liveTap?.record?.UID && (
                     <span className="text-[10px] text-[#159447] font-semibold bg-[#E8F9EE] px-2 py-0.5 rounded-md">
-                      ✓ Terisi Otomatis dari Alat
+                      ✓ Otomatis
                     </span>
                   )}
                 </div>
                 <input
                   type="text"
                   required
-                  placeholder="Tempelkan kartu ke alat atau ketik (Contoh: 6A605D83)"
+                  placeholder="Contoh: 6A605D83"
                   value={formUid}
                   onChange={(e) => setFormUid(e.target.value.toUpperCase())}
                   className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] font-mono font-bold bg-[#F7FBF7]"

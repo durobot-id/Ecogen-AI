@@ -129,7 +129,7 @@ export default function KasirPage() {
       setRfidStatus({
         detected: false,
         status: 'waiting',
-        message: 'Transaksi selesai. Silakan tap kartu kembali pada alat untuk transaksi baru.',
+        message: 'Transaksi selesai. Tempelkan kartu untuk transaksi baru.',
         isUsed: true,
       });
       await fetchRfidStatus();
@@ -170,13 +170,13 @@ export default function KasirPage() {
                   }`}
                 />
                 <span className="text-xs font-bold text-[#18352A] uppercase tracking-wide">
-                  Sensor Kartu RFID
+                  Sensor RFID
                 </span>
               </div>
 
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#159447] bg-[#E8F9EE] px-2.5 py-1 rounded-full border border-[#35C96F]/30">
                 <span className="w-2 h-2 rounded-full bg-[#35C96F] animate-ping" />
-                <span>Alat Aktif & Sinkron</span>
+                <span>Online</span>
               </div>
             </div>
 
@@ -194,12 +194,11 @@ export default function KasirPage() {
                       </span>
                     </div>
                     <p className="text-xs text-[#74857B] mt-0.5">
-                      UID: <span className="font-mono">{rfidStatus.record?.UID}</span> •{' '}
-                      {rfidStatus.ageSeconds}d lalu
+                      UID: <span className="font-mono">{rfidStatus.record?.UID}</span>
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[11px] text-[#74857B]">Saldo Poin</p>
+                    <p className="text-[11px] text-[#74857B]">Saldo</p>
                     <p className="text-base font-extrabold text-[#159447]">
                       Rp{(rfidStatus.student?.poin || 0).toLocaleString('id-ID')}
                     </p>
@@ -223,9 +222,9 @@ export default function KasirPage() {
           </div>
 
           {/* Nominal Display Area */}
-          <div className="bg-white rounded-3xl p-5 border border-[#E5EEE7] shadow-sm text-center">
+          <div className="bg-white rounded-3xl p-5 border border-[#E5EEE7] shadow-xs text-center">
             <span className="text-xs font-semibold text-[#74857B] uppercase tracking-wider block">
-              Nominal Transaksi
+              Nominal
             </span>
 
             <div className="my-2 flex items-center justify-center">
@@ -276,30 +275,30 @@ export default function KasirPage() {
             {loading ? (
               <>
                 <RefreshCw className="w-5 h-5 animate-spin" />
-                <span>Memproses Pemotongan...</span>
+                <span>Memproses Transaksi...</span>
               </>
             ) : !isCardReady ? (
               <>
                 <Radio className="w-5 h-5" />
                 <span>
                   {rfidStatus.status === 'used'
-                    ? 'KARTU SUDAH DIGUNAKAN (TAP ULANG)'
+                    ? 'Kartu Sudah Digunakan (Tap Ulang)'
                     : rfidStatus.status === 'expired'
-                    ? 'WAKTU TAP HABIS (TAP ULANG)'
+                    ? 'Waktu Habis (Tap Ulang)'
                     : nominal <= 0
-                    ? 'MASUKKAN NOMINAL TRANSAKSI'
-                    : 'SILAKAN TAP KARTU PADA ALAT'}
+                    ? 'Masukkan Nominal'
+                    : 'Tempelkan Kartu RFID'}
                 </span>
               </>
             ) : !isBalanceEnough ? (
               <>
                 <AlertTriangle className="w-5 h-5 text-amber-500" />
-                <span>SALDO TIDAK MENCUKUPI</span>
+                <span>Saldo Tidak Cukup</span>
               </>
             ) : (
               <>
                 <CheckCircle className="w-5 h-5" />
-                <span>PROSES TRANSAKSI (1x TAP)</span>
+                <span>Bayar Sekarang</span>
               </>
             )}
           </button>

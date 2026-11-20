@@ -387,9 +387,7 @@ export default function PointsManagement({
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-bold text-[#18352A] flex items-center gap-1.5">
                 <span>
-                  {mode === 'topup'
-                    ? 'Pilih Alasan Pemberian Poin (Disertai Nominal):'
-                    : 'Pilih Alasan Pengurangan Poin (Kejadian / Pelanggaran):'}
+                  {mode === 'topup' ? 'Pilih Alasan Reward:' : 'Pilih Alasan Pelanggaran:'}
                 </span>
               </label>
 
@@ -401,7 +399,7 @@ export default function PointsManagement({
                 title="Edit nilai atau tambah alasan baru"
               >
                 <Settings2 className="w-3.5 h-3.5" />
-                <span>Atur Preset Alasan</span>
+                <span>Atur Preset</span>
               </button>
             </div>
 
@@ -460,22 +458,22 @@ export default function PointsManagement({
                 <div>
                   <p className="text-xs font-bold text-[#18352A] flex items-center gap-1">
                     <Plus className="w-3.5 h-3.5 text-[#159447]" />
-                    <span>Alasan Lainnya (Kustom)</span>
+                    <span>Alasan Lainnya</span>
                   </p>
-                  <span className="text-[10px] text-[#74857B]">Tulis alasan & nominal bebas</span>
+                  <span className="text-[10px] text-[#74857B]">Input nominal bebas</span>
                 </div>
                 <span className="text-xs font-bold text-[#74857B] bg-white px-2 py-0.5 rounded-lg border border-[#E5EEE7]">
-                  Input Bebas
+                  Bebas
                 </span>
               </button>
             </div>
           </div>
 
-          {/* Custom Reason & Nominal Input (Appears when 'custom' selected or editable) */}
+          {/* Custom Reason & Nominal Input (Only editable when 'custom' selected) */}
           {selectedPresetId === 'custom' ? (
             <div className="bg-[#F7FBF7] p-4 rounded-2xl border border-[#E5EEE7] space-y-3 animate-fadeIn">
               <span className="text-[11px] font-bold text-[#18352A] uppercase tracking-wide block">
-                Tulis Alasan & Nominal Kustom:
+                Alasan & Nominal Kustom
               </span>
 
               <div>
@@ -487,12 +485,12 @@ export default function PointsManagement({
                   required
                   placeholder={
                     mode === 'topup'
-                      ? 'Contoh: Juara 1 lomba kebersihan kelas...'
-                      : 'Contoh: Terlambat piket atau membuang sampah di laci...'
+                      ? 'Contoh: Juara 1 lomba kebersihan kelas'
+                      : 'Contoh: Terlambat piket atau membuang sampah di laci'
                   }
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] bg-white text-[#18352A]"
+                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] bg-white text-[#18352A]"
                 />
               </div>
 
@@ -505,34 +503,31 @@ export default function PointsManagement({
                   min="1"
                   step="any"
                   required
-                  placeholder="Masukkan nominal angka (misal: 10000)"
+                  placeholder="Contoh: 10000"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-base font-bold rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] bg-white text-[#18352A]"
+                  className="w-full px-3.5 py-2 text-base font-bold rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] bg-white text-[#18352A]"
                 />
               </div>
             </div>
           ) : (
-            /* Selected Reason Quick Adjustment */
-            <div className="bg-[#F7FBF7] px-4 py-3 rounded-xl border border-[#E5EEE7] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-              <div>
-                <span className="text-[#74857B] block text-[11px]">Alasan Terpilih:</span>
-                <span className="font-bold text-[#18352A]">{reason}</span>
+            /* Selected Reason (Locked Nominal - sesuai konfigurasi) */
+            <div className="bg-[#F7FBF7] px-4 py-3 rounded-xl border border-[#E5EEE7] flex items-center justify-between text-xs">
+              <div className="min-w-0 pr-3">
+                <span className="text-[#74857B] block text-[11px]">Alasan:</span>
+                <span className="font-bold text-[#18352A] truncate block">{reason}</span>
               </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                <span className="text-[#74857B]">Nominal:</span>
-                <div className="inline-flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-[#E5EEE7]">
-                  <span className="font-bold text-[#18352A]">Rp</span>
-                  <input
-                    type="number"
-                    min="1"
-                    step="any"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="w-20 font-bold text-[#159447] focus:outline-none text-right"
-                    title="Nominal dapat disesuaikan manual jika diperlukan"
-                  />
-                </div>
+              <div className="text-right shrink-0">
+                <span className="text-[#74857B] block text-[11px]">Nominal:</span>
+                <span
+                  className={`font-extrabold text-sm px-2.5 py-1 rounded-lg inline-block ${
+                    mode === 'topup'
+                      ? 'bg-[#E8F9EE] text-[#159447] border border-[#35C96F]/30'
+                      : 'bg-red-50 text-[#E05252] border border-red-200'
+                  }`}
+                >
+                  {mode === 'topup' ? '+' : '-'}Rp{Number(amount).toLocaleString('id-ID')}
+                </span>
               </div>
             </div>
           )}
@@ -587,12 +582,12 @@ export default function PointsManagement({
             ) : mode === 'topup' ? (
               <>
                 <ArrowUpRight className="w-5 h-5" />
-                <span>KONFIRMASI TAMBAH POIN</span>
+                <span>Tambah Poin</span>
               </>
             ) : (
               <>
                 <ArrowDownLeft className="w-5 h-5" />
-                <span>KONFIRMASI KURANGI POIN</span>
+                <span>Kurangi Poin</span>
               </>
             )}
           </button>
@@ -614,7 +609,7 @@ export default function PointsManagement({
                   </span>
                 </h3>
                 <p className="text-xs text-[#74857B]">
-                  Edit nominal, ubah teks alasan, atau tambahkan tombol alasan baru
+                  Sesuaikan daftar alasan dan nominal poin
                 </p>
               </div>
               <button

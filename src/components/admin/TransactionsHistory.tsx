@@ -92,10 +92,10 @@ export default function TransactionsHistory({
         <div>
           <h2 className="text-xl font-bold text-[#18352A] flex items-center gap-2">
             <History className="w-5 h-5 text-[#35C96F]" />
-            <span>Riwayat Transaksi EcoPoint</span>
+            <span>Riwayat Transaksi</span>
           </h2>
           <p className="text-xs text-[#74857B] mt-0.5">
-            Audit log lengkap transaksi pemotongan kasir, top-up poin, dan penyesuaian manual
+            Catatan transaksi kasir, reward, dan penyesuaian poin
           </p>
         </div>
 
@@ -139,11 +139,11 @@ export default function TransactionsHistory({
               onChange={(e) => setFilterType(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] bg-[#F7FBF7] text-[#18352A]"
             >
-              <option value="ALL">Semua Jenis Transaksi</option>
-              <option value="purchase">Kasir (Pemotongan Poin)</option>
-              <option value="topup">Top Up (Penambahan Poin)</option>
-              <option value="adjust">Penyesuaian Manual</option>
-              <option value="reward">Reward Aktivitas</option>
+              <option value="ALL">Semua Jenis</option>
+              <option value="purchase">Kasir (Pemotongan)</option>
+              <option value="topup">Top Up (Reward)</option>
+              <option value="adjust">Penyesuaian</option>
+              <option value="reward">Aktivitas</option>
             </select>
           </div>
         </div>

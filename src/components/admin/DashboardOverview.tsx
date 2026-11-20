@@ -58,12 +58,12 @@ export default function DashboardOverview({
         <div className="bg-white rounded-2xl p-5 border border-[#E5EEE7] shadow-xs flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
-              Total Saldo Poin
+              Saldo Beredar
             </p>
             <p className="text-2xl sm:text-3xl font-extrabold text-[#159447] mt-1">
               Rp{stats.totalPoints.toLocaleString('id-ID')}
             </p>
-            <p className="text-[11px] text-[#74857B] mt-2">Beredar pada siswa aktif</p>
+            <p className="text-[11px] text-[#74857B] mt-2">Siswa aktif</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#159447]">
             <Coins className="w-6 h-6" />
@@ -74,14 +74,14 @@ export default function DashboardOverview({
         <div className="bg-white rounded-2xl p-5 border border-[#E5EEE7] shadow-xs flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
-              Poin Diberikan
+              Total Reward
             </p>
             <p className="text-2xl sm:text-3xl font-extrabold text-[#18352A] mt-1">
               Rp{stats.totalPointsGranted.toLocaleString('id-ID')}
             </p>
             <span className="text-[11px] text-[#20A65A] font-semibold mt-2 inline-flex items-center gap-0.5">
               <ArrowUpRight className="w-3 h-3" />
-              <span>Apresiasi siswa</span>
+              <span>Poin masuk</span>
             </span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-[#E8F9EE] border border-[#35C96F]/30 flex items-center justify-center text-[#20A65A]">
@@ -93,14 +93,14 @@ export default function DashboardOverview({
         <div className="bg-white rounded-2xl p-5 border border-[#E5EEE7] shadow-xs flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
-              Poin Digunakan
+              Total Belanja
             </p>
             <p className="text-2xl sm:text-3xl font-extrabold text-[#18352A] mt-1">
               Rp{stats.totalPointsSpent.toLocaleString('id-ID')}
             </p>
             <span className="text-[11px] text-[#74857B] font-semibold mt-2 inline-flex items-center gap-0.5">
               <ArrowDownLeft className="w-3 h-3 text-[#E05252]" />
-              <span>{stats.totalTransactions} Transaksi</span>
+              <span>{stats.totalTransactions} transaksi</span>
             </span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-[#E9A23B]">

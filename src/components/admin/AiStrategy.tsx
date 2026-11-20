@@ -114,10 +114,10 @@ export default function AiStrategy({ onOpenTopUpWithPreset }: AiStrategyProps) {
         <div>
           <h2 className="text-xl font-bold text-[#18352A] flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-[#35C96F]" />
-            <span>AI Konsultan Strategi & Pertukaran EcoPoint</span>
+            <span>Strategi & Gamifikasi AI</span>
           </h2>
           <p className="text-xs text-[#74857B] mt-0.5">
-            Rancang ide penukaran poin yang menarik bagi siswa, program reward kreatif, dan gamifikasi lingkungan
+            Rekomendasi reward dan program aktivitas siswa
           </p>
         </div>
 
@@ -171,12 +171,12 @@ export default function AiStrategy({ onOpenTopUpWithPreset }: AiStrategyProps) {
       <div className="bg-white rounded-2xl p-6 border border-[#E5EEE7] shadow-xs space-y-4">
         {/* Focus Mode Tabs */}
         <div>
-          <label className="text-xs font-bold text-[#18352A] block mb-1.5">Fokus Rencana AI:</label>
+          <label className="text-xs font-bold text-[#18352A] block mb-1.5">Fokus Rencana:</label>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { id: 'redemption', label: 'Ide Pertukaran Poin (Reward Siswa)', icon: Gift },
-              { id: 'earning', label: 'Aktivitas Memperoleh Poin', icon: Coins },
-              { id: 'both', label: 'Paket Lengkap Ekosistem', icon: Award },
+              { id: 'redemption', label: 'Ide Reward', icon: Gift },
+              { id: 'earning', label: 'Aktivitas Poin', icon: Coins },
+              { id: 'both', label: 'Kombinasi', icon: Award },
             ].map((m) => {
               const Icon = m.icon;
               const isSelected = focusMode === m.id;
@@ -192,8 +192,7 @@ export default function AiStrategy({ onOpenTopUpWithPreset }: AiStrategyProps) {
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{m.label}</span>
-                  <span className="sm:hidden">{m.label.split(' ')[0]}</span>
+                  <span>{m.label}</span>
                 </button>
               );
             })}
@@ -202,7 +201,7 @@ export default function AiStrategy({ onOpenTopUpWithPreset }: AiStrategyProps) {
 
         {/* Category Pills */}
         <div>
-          <label className="text-xs font-bold text-[#18352A] block mb-2">Tema / Kategori Fokus</label>
+          <label className="text-xs font-bold text-[#18352A] block mb-2">Tema / Kategori</label>
           <div className="flex flex-wrap gap-2">
             {categories.map((cat) => (
               <button
@@ -224,14 +223,14 @@ export default function AiStrategy({ onOpenTopUpWithPreset }: AiStrategyProps) {
         {/* Custom Instructions */}
         <div>
           <label className="text-xs font-bold text-[#18352A] block mb-1.5">
-            Instruksi / Gagasan Khusus Anda
+            Instruksi Tambahan (Opsional)
           </label>
           <textarea
-            rows={3}
+            rows={2}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Contoh: Berikan ide reward pertukaran poin di kantin dan sekolah yang murah tapi sangat disukai siswa SMP/SMA agar mereka berlomba-lomba mengumpulkan poin..."
-            className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] bg-[#F7FBF7] text-[#18352A]"
+            placeholder="Contoh: Fokus pada voucher kantin dan reward yang disukai siswa..."
+            className="w-full px-3.5 py-2 text-sm rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] bg-[#F7FBF7] text-[#18352A]"
           />
         </div>
 
@@ -241,17 +240,17 @@ export default function AiStrategy({ onOpenTopUpWithPreset }: AiStrategyProps) {
             type="button"
             onClick={() => handleGenerate()}
             disabled={loading}
-            className="py-3 px-6 rounded-xl bg-[#35C96F] hover:bg-[#159447] text-white font-bold text-sm shadow-md shadow-[#35C96F]/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+            className="py-2.5 px-5 rounded-xl bg-[#35C96F] hover:bg-[#159447] text-white font-bold text-sm shadow-md shadow-[#35C96F]/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
           >
             {loading ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Merumuskan Ide & Strategi AI...</span>
+                <span>Merumuskan Rekomendasi...</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                <span>GENERATE IDE REWARD & STRATEGI</span>
+                <span>Buat Rekomendasi</span>
               </>
             )}
           </button>
