@@ -1,4 +1,4 @@
-import { Student, ProcessRecord, Transaction, ActivityTemplate, DashboardStats } from '@/types';
+import { Student, ProcessRecord, Transaction, ActivityTemplate, DashboardStats, PointPreset } from '@/types';
 
 const DB_URL = (
   process.env.FIREBASE_DATABASE_URL ||
@@ -595,5 +595,20 @@ export const FirebaseDB = {
       body: JSON.stringify(record),
     });
     return record;
+  },
+
+  // -------------------------------------------------------------
+  // PRESETS ALASAN & NOMINAL POIN (/Pengaturan/PresetPoin)
+  // -------------------------------------------------------------
+  async getPointPresets(): Promise<{ topup: PointPreset[]; penalty: PointPreset[] } | null> {
+    const data = await fetchRTDB<{ topup: PointPreset[]; penalty: PointPreset[] }>('Pengaturan/PresetPoin');
+    return data || null;
+  },
+
+  async savePointPresets(presets: { topup: PointPreset[]; penalty: PointPreset[] }): Promise<void> {
+    await fetchRTDB('Pengaturan/PresetPoin', {
+      method: 'PUT',
+      body: JSON.stringify(presets),
+    });
   },
 };

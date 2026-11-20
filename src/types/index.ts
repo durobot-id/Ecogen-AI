@@ -48,6 +48,14 @@ export interface ActivityTemplate {
   status?: 'aktif' | 'nonaktif';
 }
 
+export interface PointPreset {
+  id: string;
+  label: string;
+  amount: number;
+  type: 'topup' | 'adjust';
+  category?: string;
+}
+
 export interface DashboardStats {
   totalStudents: number;
   totalPoints: number;
