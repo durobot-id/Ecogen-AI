@@ -16,6 +16,9 @@ import {
   Radio,
   Sparkles,
   RefreshCw,
+  UserX,
+  UserCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { Student } from '@/types';
 
@@ -40,6 +43,8 @@ export default function StudentsManagement({
   // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [deleteTargetStudent, setDeleteTargetStudent] = useState<Student | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Form states
   const [formUid, setFormUid] = useState('');
@@ -224,24 +229,63 @@ export default function StudentsManagement({
     }
   };
 
-  const handleDelete = async (student: Student) => {
-    const isPermanent = confirm(
-      `Apakah Anda yakin ingin menonaktifkan siswa ${student.nama} (${student.uid})?\n(Klik Batal jika tidak sengaja)`
+  const handleToggleStatus = async (student: Student, targetStatus?: 'aktif' | 'nonaktif') => {
+    const nextStatus = targetStatus || ((student.status || 'aktif') === 'aktif' ? 'nonaktif' : 'aktif');
+    const actionText = nextStatus === 'nonaktif' ? 'menonaktifkan' : 'mengaktifkan kembali';
+
+    const confirmed = confirm(
+      `Apakah Anda yakin ingin ${actionText} akun ${student.nama} (${student.uid})?`
     );
-    if (!isPermanent) return;
+    if (!confirmed) return;
 
     try {
+      setActionLoading(true);
       const res = await fetch(`/api/students/${student.uid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (deleteTargetStudent?.uid === student.uid) {
+          setDeleteTargetStudent(null);
+        }
+        onRefresh();
+      } else {
+        alert(data.message || 'Gagal mengubah status siswa.');
+      }
+    } catch {
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeletePermanent = async (student: Student) => {
+    const confirmed = confirm(
+      `PERINGATAN: Apakah Anda yakin ingin MENGHAPUS PERMANEN siswa ${student.nama} (${student.uid}) dari database Firebase?\n\nSeluruh data siswa ini akan dihapus dari sistem.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      const res = await fetch(`/api/students/${student.uid}?permanent=true`, {
         method: 'DELETE',
       });
       const data = await res.json();
       if (data.success) {
+        setDeleteTargetStudent(null);
+        if (editingStudent?.uid === student.uid) {
+          setEditingStudent(null);
+        }
         onRefresh();
       } else {
-        alert(data.message || 'Gagal menonaktifkan siswa.');
+        alert(data.message || 'Gagal menghapus data siswa.');
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      alert('Terjadi kesalahan jaringan saat menghapus data siswa.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -355,15 +399,18 @@ export default function StudentsManagement({
                         Rp{st.poin.toLocaleString('id-ID')}
                       </td>
                       <td className="px-5 py-3.5 text-center">
-                        <span
-                          className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(st)}
+                          title="Klik untuk ubah status (Aktif/Nonaktif)"
+                          className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer ${
                             (st.status || 'aktif') === 'aktif'
-                              ? 'bg-[#E8F9EE] text-[#159447]'
-                              : 'bg-gray-100 text-[#74857B]'
+                              ? 'bg-[#E8F9EE] text-[#159447] hover:bg-[#35C96F]/20'
+                              : 'bg-gray-100 text-[#74857B] hover:bg-gray-200'
                           }`}
                         >
                           {(st.status || 'aktif') === 'aktif' ? 'Aktif' : 'Nonaktif'}
-                        </span>
+                        </button>
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1.5">
@@ -385,9 +432,9 @@ export default function StudentsManagement({
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDelete(st)}
+                            onClick={() => setDeleteTargetStudent(st)}
                             className="p-1.5 rounded-lg text-[#74857B] hover:text-[#E05252] hover:bg-red-50 transition-colors"
-                            title="Nonaktifkan Siswa"
+                            title="Kelola / Hapus Siswa"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -416,15 +463,18 @@ export default function StudentsManagement({
                   </div>
 
                   <div className="flex items-center justify-between pt-2">
-                    <span
-                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStatus(st)}
+                      title="Klik untuk ubah status (Aktif/Nonaktif)"
+                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full transition-all active:scale-95 cursor-pointer ${
                         (st.status || 'aktif') === 'aktif'
                           ? 'bg-[#E8F9EE] text-[#159447]'
                           : 'bg-gray-100 text-[#74857B]'
                       }`}
                     >
                       {(st.status || 'aktif') === 'aktif' ? 'Aktif' : 'Nonaktif'}
-                    </span>
+                    </button>
 
                     <div className="flex items-center gap-2">
                       <button
@@ -437,12 +487,14 @@ export default function StudentsManagement({
                       <button
                         onClick={() => handleOpenEdit(st)}
                         className="p-1.5 rounded-lg text-[#74857B] hover:bg-gray-100"
+                        title="Edit Data"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(st)}
+                        onClick={() => setDeleteTargetStudent(st)}
                         className="p-1.5 rounded-lg text-[#E05252] hover:bg-red-50"
+                        title="Kelola / Hapus Siswa"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -675,23 +727,163 @@ export default function StudentsManagement({
                 </select>
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-2 flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  onClick={() => setEditingStudent(null)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold text-[#74857B] hover:bg-gray-100"
+                  onClick={() => {
+                    const target = editingStudent;
+                    setEditingStudent(null);
+                    if (target) setDeleteTargetStudent(target);
+                  }}
+                  className="text-xs font-semibold text-[#E05252] hover:underline flex items-center gap-1 py-2 px-1"
                 >
-                  Batal
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus Data</span>
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2.5 rounded-xl bg-[#35C96F] hover:bg-[#159447] text-white text-sm font-bold shadow-xs transition-all"
-                >
-                  {submitting ? 'Menyimpan...' : 'Perbarui Data'}
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingStudent(null)}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold text-[#74857B] hover:bg-gray-100"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-5 py-2 rounded-xl bg-[#35C96F] hover:bg-[#159447] text-white text-sm font-bold shadow-xs transition-all"
+                  >
+                    {submitting ? 'Menyimpan...' : 'Perbarui Data'}
+                  </button>
+                </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete / Manage Action Modal */}
+      {deleteTargetStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-[#E5EEE7] relative animate-fadeIn space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5EEE7]">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-red-50 text-[#E05252] border border-red-100 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-[#18352A]">Kelola / Hapus Siswa</h3>
+                  <p className="text-xs text-[#74857B]">Pilih opsi tindakan akun siswa</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteTargetStudent(null)}
+                className="p-1 rounded-lg text-[#74857B] hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Student Info Card */}
+            <div className="bg-[#F7FBF7] p-3.5 rounded-2xl border border-[#E5EEE7] text-xs space-y-1.5">
+              <div className="flex justify-between items-center">
+                <span className="text-[#74857B]">Nama Siswa:</span>
+                <span className="font-bold text-sm text-[#18352A] capitalize">
+                  {deleteTargetStudent.nama}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[#74857B]">Kelas:</span>
+                <span className="font-semibold text-[#18352A]">Kelas {deleteTargetStudent.kelas}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[#74857B]">UID Kartu:</span>
+                <span className="font-mono font-bold text-[#18352A]">{deleteTargetStudent.uid}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[#74857B]">Saldo Poin:</span>
+                <span className="font-extrabold text-sm text-[#159447]">
+                  Rp{deleteTargetStudent.poin.toLocaleString('id-ID')}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-1 border-t border-[#E5EEE7]">
+                <span className="text-[#74857B]">Status Akun:</span>
+                <span
+                  className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${
+                    (deleteTargetStudent.status || 'aktif') === 'aktif'
+                      ? 'bg-[#E8F9EE] text-[#159447]'
+                      : 'bg-gray-100 text-[#74857B]'
+                  }`}
+                >
+                  {(deleteTargetStudent.status || 'aktif') === 'aktif' ? 'Aktif' : 'Nonaktif'}
+                </span>
+              </div>
+            </div>
+
+            {/* Two Action Choices */}
+            <div className="space-y-2 pt-1">
+              {/* Option 1: Toggle Nonaktifkan / Aktifkan */}
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={() => handleToggleStatus(deleteTargetStudent)}
+                className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-3 active:scale-98 ${
+                  (deleteTargetStudent.status || 'aktif') === 'aktif'
+                    ? 'bg-amber-50/70 border-amber-200 hover:bg-amber-100/70 text-amber-900'
+                    : 'bg-[#E8F9EE] border-[#35C96F]/30 hover:bg-[#35C96F]/10 text-[#159447]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  {(deleteTargetStudent.status || 'aktif') === 'aktif' ? (
+                    <UserX className="w-5 h-5 text-amber-700 shrink-0" />
+                  ) : (
+                    <UserCheck className="w-5 h-5 text-[#159447] shrink-0" />
+                  )}
+                  <div>
+                    <p className="font-bold text-xs">
+                      {(deleteTargetStudent.status || 'aktif') === 'aktif'
+                        ? 'Nonaktifkan Akun Siswa'
+                        : 'Aktifkan Kembali Akun Siswa'}
+                    </p>
+                    <p className="text-[11px] text-[#74857B] mt-0.5">
+                      {(deleteTargetStudent.status || 'aktif') === 'aktif'
+                        ? 'Data tetap ada, tetapi kartu tidak bisa transaksi di kasir.'
+                        : 'Akun kembali aktif dan kartu dapat bertransaksi.'}
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Option 2: Hapus Data Permanen */}
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={() => handleDeletePermanent(deleteTargetStudent)}
+                className="w-full p-3 rounded-xl border border-red-200 bg-red-50/80 hover:bg-red-100 text-[#E05252] text-left transition-all flex items-center justify-between gap-3 active:scale-98"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Trash2 className="w-5 h-5 text-[#E05252] shrink-0" />
+                  <div>
+                    <p className="font-bold text-xs text-[#E05252]">Hapus Data Permanen</p>
+                    <p className="text-[11px] text-red-600/80 mt-0.5">
+                      Hapus seluruh data siswa dari database Firebase secara permanen.
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setDeleteTargetStudent(null)}
+                className="w-full py-2.5 rounded-xl border border-[#E5EEE7] text-xs font-semibold text-[#74857B] hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+            </div>
           </div>
         </div>
       )}

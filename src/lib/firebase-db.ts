@@ -147,6 +147,11 @@ export const FirebaseDB = {
       await fetchRTDB(`Siwa/${cleanUid}`, {
         method: 'DELETE',
       });
+      if (cleanUid !== uid.trim()) {
+        await fetchRTDB(`Siwa/${uid.trim()}`, {
+          method: 'DELETE',
+        }).catch(() => {});
+      }
     } else {
       await this.updateStudent(cleanUid, { status: 'nonaktif' });
     }
