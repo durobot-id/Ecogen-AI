@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type') || 'ALL';
     const q = (searchParams.get('q') || '').toLowerCase().trim();
-    const limit = Number(searchParams.get('limit')) || 100;
+    const limitParam = searchParams.get('limit');
+    const limit = limitParam === '0' || limitParam === 'all' ? 0 : Number(limitParam) || 100;
 
     let transactions = await FirebaseDB.getTransactions(limit);
 

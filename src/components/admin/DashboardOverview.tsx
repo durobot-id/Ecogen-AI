@@ -121,10 +121,10 @@ export default function DashboardOverview({
               <h3 className="font-bold text-base text-[#18352A]">Siswa Poin Tertinggi</h3>
             </div>
             <button
-              onClick={() => onNavigateTab('students')}
+              onClick={() => onNavigateTab('leaderboard')}
               className="text-xs text-[#159447] hover:underline font-semibold"
             >
-              Lihat Semua
+              Lihat Leaderboard
             </button>
           </div>
 

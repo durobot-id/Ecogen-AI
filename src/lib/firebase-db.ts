@@ -518,14 +518,15 @@ export const FirebaseDB = {
     const data = await fetchRTDB<Record<string, Transaction>>('Transaksi');
     if (!data) return [];
 
-    return Object.entries(data)
+    const list = Object.entries(data)
       .map(([id, item]) => ({
         ...item,
         id: item.id || id,
         createdAt: item.createdAt || Date.now(),
       }))
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, limit);
+      .sort((a, b) => b.createdAt - a.createdAt);
+
+    return limit > 0 ? list.slice(0, limit) : list;
   },
 
   // -------------------------------------------------------------

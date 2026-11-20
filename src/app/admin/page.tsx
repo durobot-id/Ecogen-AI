@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/common/Header';
 import OfflineBanner from '@/components/common/OfflineBanner';
 import DashboardOverview from '@/components/admin/DashboardOverview';
+import EcoLeaderboard from '@/components/admin/EcoLeaderboard';
+import EcoTrend from '@/components/admin/EcoTrend';
 import StudentsManagement from '@/components/admin/StudentsManagement';
 import PointsManagement from '@/components/admin/PointsManagement';
 import TransactionsHistory from '@/components/admin/TransactionsHistory';
@@ -12,6 +14,8 @@ import AiStrategy from '@/components/admin/AiStrategy';
 import SettingsView from '@/components/admin/SettingsView';
 import {
   LayoutDashboard,
+  Trophy,
+  TrendingUp,
   Users,
   Coins,
   History,
@@ -20,7 +24,15 @@ import {
 } from 'lucide-react';
 import { Student, Transaction, DashboardStats } from '@/types';
 
-type AdminTab = 'dashboard' | 'students' | 'points' | 'transactions' | 'ai' | 'settings';
+type AdminTab =
+  | 'dashboard'
+  | 'leaderboard'
+  | 'trend'
+  | 'students'
+  | 'points'
+  | 'transactions'
+  | 'ai'
+  | 'settings';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -65,6 +77,8 @@ export default function AdminPage() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'leaderboard', label: 'Eco-Leaderboard', icon: Trophy },
+    { id: 'trend', label: 'Eco-Trend', icon: TrendingUp },
     { id: 'students', label: 'Data Siswa', icon: Users },
     { id: 'points', label: 'Kelola Poin', icon: Coins },
     { id: 'transactions', label: 'Riwayat Transaksi', icon: History },
@@ -146,6 +160,18 @@ export default function AdminPage() {
               onNavigateTab={(tab) => setActiveTab(tab as AdminTab)}
               onSelectStudentTopUp={handleOpenTopUp}
             />
+          )}
+
+          {activeTab === 'leaderboard' && (
+            <EcoLeaderboard
+              students={students}
+              loading={loading}
+              onOpenTopUp={handleOpenTopUp}
+            />
+          )}
+
+          {activeTab === 'trend' && (
+            <EcoTrend initialTransactions={transactions} />
           )}
 
           {activeTab === 'students' && (
