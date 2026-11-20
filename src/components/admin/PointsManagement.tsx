@@ -503,9 +503,9 @@ export default function PointsManagement({
                 <input
                   type="number"
                   min="1"
-                  step="500"
+                  step="any"
                   required
-                  placeholder="Masukkan nominal angka (misal: 5000)"
+                  placeholder="Masukkan nominal angka (misal: 10000)"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-base font-bold rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] bg-white text-[#18352A]"
@@ -526,6 +526,7 @@ export default function PointsManagement({
                   <input
                     type="number"
                     min="1"
+                    step="any"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     className="w-20 font-bold text-[#159447] focus:outline-none text-right"
@@ -669,8 +670,8 @@ export default function PointsManagement({
                         <span className="font-bold text-[#74857B]">Rp</span>
                         <input
                           type="number"
-                          min="500"
-                          step="500"
+                          min="1"
+                          step="any"
                           value={item.amount}
                           onChange={(e) => handleUpdatePresetItem(idx, 'amount', e.target.value)}
                           className="w-24 text-right font-extrabold text-[#159447] focus:outline-none"
@@ -700,8 +701,8 @@ export default function PointsManagement({
                   <div className="flex gap-2">
                     <input
                       type="number"
-                      min="500"
-                      step="500"
+                      min="1"
+                      step="any"
                       value={newAmount}
                       onChange={(e) => setNewAmount(e.target.value)}
                       placeholder="Nominal poin (Rp)"
