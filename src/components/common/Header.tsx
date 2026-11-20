@@ -37,13 +37,15 @@ export default function Header({ role, title, subtitle }: HeaderProps) {
     if (confirm('Apakah Anda yakin ingin keluar dari sesi?')) {
       setLoggingOut(true);
       try {
-        await fetch('/api/auth/logout', { method: 'POST' });
-        router.push('/');
-        router.refresh();
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          cache: 'no-store',
+        });
       } catch (e) {
         console.error('Logout error:', e);
       } finally {
-        setLoggingOut(false);
+        // Hard redirect to clear all router & memory cache
+        window.location.replace('/');
       }
     }
   };

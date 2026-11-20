@@ -199,6 +199,30 @@ export const FirebaseDB = {
     };
   },
 
+  async getLatestScannedCard(maxAgeSeconds = 300): Promise<{
+    record: ProcessRecord | null;
+    student: Student | null;
+    ageSeconds: number;
+    isRegistered: boolean;
+  }> {
+    const processes = await this.getAllProcesses();
+    if (processes.length === 0) {
+      return { record: null, student: null, ageSeconds: 0, isRegistered: false };
+    }
+
+    const newest = processes[0];
+    const now = Date.now();
+    const ageSeconds = Math.max(0, Math.floor((now - (newest.createdAt || now)) / 1000));
+    const student = await this.getStudentByUid(newest.UID);
+
+    return {
+      record: newest,
+      student,
+      ageSeconds,
+      isRegistered: !!student,
+    };
+  },
+
   async simulateTap(uid: string): Promise<ProcessRecord> {
     const cleanUid = uid.trim().toUpperCase();
     const now = new Date();

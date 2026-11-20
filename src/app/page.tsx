@@ -25,7 +25,7 @@ export default function HomePage() {
   useEffect(() => {
     async function verifyExistingSession() {
       try {
-        const res = await fetch('/api/auth/session');
+        const res = await fetch('/api/auth/session', { cache: 'no-store' });
         const data = await res.json();
         if (data.authenticated && data.role) {
           router.push(data.role === 'admin' ? '/admin' : '/kasir');

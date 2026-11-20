@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Users,
   Search,
@@ -13,6 +13,9 @@ import {
   X,
   Filter,
   Check,
+  Radio,
+  Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import { Student } from '@/types';
 
@@ -46,6 +49,59 @@ export default function StudentsManagement({
   const [formStatus, setFormStatus] = useState<'aktif' | 'nonaktif'>('aktif');
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Live RFID Tap Detection for auto-filling UID
+  interface LatestTapData {
+    record: { id: string; UID: string; createdAt: number; status: string; device?: string } | null;
+    student: Student | null;
+    ageSeconds: number;
+    isRegistered: boolean;
+  }
+  const [liveTap, setLiveTap] = useState<LatestTapData | null>(null);
+  const [autoFilledUid, setAutoFilledUid] = useState('');
+
+  // Poll for latest RFID tap when Add Student modal is open
+  useEffect(() => {
+    if (!isAddOpen) {
+      setLiveTap(null);
+      setAutoFilledUid('');
+      return;
+    }
+
+    let isMounted = true;
+    const fetchLatestTap = async () => {
+      try {
+        const res = await fetch('/api/admin/latest-tap', { cache: 'no-store' });
+        const json = await res.json();
+        if (isMounted && json.success && json.data) {
+          const data: LatestTapData = json.data;
+          setLiveTap(data);
+
+          if (data.record && data.record.UID) {
+            const detectedUid = data.record.UID.trim().toUpperCase();
+            // Automatically fill UID if formUid is currently empty or user just tapped a new card
+            setFormUid((prev) => {
+              if (!prev || prev !== detectedUid && data.ageSeconds <= 60) {
+                setAutoFilledUid(detectedUid);
+                return detectedUid;
+              }
+              return prev;
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Error polling live tap:', err);
+      }
+    };
+
+    fetchLatestTap();
+    const interval = setInterval(fetchLatestTap, 1500);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [isAddOpen]);
 
   // Extract unique classes
   const classList = useMemo(() => {
@@ -415,20 +471,92 @@ export default function StudentsManagement({
 
             <form onSubmit={handleSaveAdd} className="space-y-4 pt-4">
               {formError && (
-                <div className="p-3 rounded-xl bg-red-50 text-[#E05252] text-xs">{formError}</div>
+                <div className="p-3 rounded-xl bg-red-50 text-[#E05252] text-xs font-medium border border-red-100 flex items-center gap-1.5">
+                  <span>{formError}</span>
+                </div>
               )}
 
+              {/* Live RFID Hardware Reader Auto-Sync Box */}
+              <div className="bg-[#F7FBF7] p-3.5 rounded-2xl border border-[#E5EEE7] space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Radio
+                      className={`w-4 h-4 ${
+                        liveTap?.record ? 'text-[#35C96F] animate-pulse' : 'text-[#74857B]'
+                      }`}
+                    />
+                    <span className="text-xs font-bold text-[#18352A]">
+                      Deteksi Kartu RFID Fisik
+                    </span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-[#E8F9EE] text-[#159447] border border-[#35C96F]/30 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    <span>Auto-Sync Aktif</span>
+                  </span>
+                </div>
+
+                {liveTap?.record ? (
+                  <div className="bg-white p-3 rounded-xl border border-[#35C96F]/30 shadow-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-[#74857B]">UID Terdeteksi:</span>
+                        <span className="font-mono font-extrabold text-sm text-[#159447] bg-[#E8F9EE] px-2 py-0.5 rounded-md border border-[#35C96F]/30">
+                          {liveTap.record.UID}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-[#74857B]">
+                        {liveTap.ageSeconds}d lalu
+                      </span>
+                    </div>
+
+                    {liveTap.isRegistered ? (
+                      <div className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200">
+                        ⚠️ Kartu ini sudah terdaftar atas nama: <strong>{liveTap.student?.nama}</strong> ({liveTap.student?.kelas})
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-[#159447] bg-[#E8F9EE] p-2 rounded-lg border border-[#35C96F]/20 flex items-center gap-1.5 font-medium">
+                        <Check className="w-3.5 h-3.5 shrink-0" />
+                        <span>Kartu baru terdeteksi! UID otomatis disinkronkan ke input di bawah.</span>
+                      </div>
+                    )}
+
+                    {formUid !== liveTap.record.UID && (
+                      <button
+                        type="button"
+                        onClick={() => setFormUid(liveTap.record!.UID)}
+                        className="text-xs font-bold text-[#159447] hover:underline flex items-center gap-1"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>Gunakan UID Kartu Ini ({liveTap.record.UID})</span>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-white/60 p-3 rounded-xl border border-dashed border-[#CBDAD0] text-center text-xs text-[#74857B] space-y-1">
+                    <p className="font-medium text-[#18352A]">Tempelkan kartu baru pada alat scanner...</p>
+                    <p className="text-[11px]">UID kartu akan otomatis terbaca dan terisi tanpa perlu mengetik manual.</p>
+                  </div>
+                )}
+              </div>
+
               <div>
-                <label className="text-xs font-bold text-[#18352A] block mb-1">
-                  UID Kartu RFID (Hex) *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-[#18352A]">
+                    UID Kartu RFID (Hex) *
+                  </label>
+                  {formUid && formUid === liveTap?.record?.UID && (
+                    <span className="text-[10px] text-[#159447] font-semibold bg-[#E8F9EE] px-2 py-0.5 rounded-md">
+                      ✓ Terisi Otomatis dari Alat
+                    </span>
+                  )}
+                </div>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: 6A605D83"
+                  placeholder="Tempelkan kartu ke alat atau ketik (Contoh: 6A605D83)"
                   value={formUid}
                   onChange={(e) => setFormUid(e.target.value.toUpperCase())}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] font-mono"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-[#E5EEE7] focus:outline-none focus:border-[#35C96F] font-mono font-bold bg-[#F7FBF7]"
                 />
               </div>
 
