@@ -231,87 +231,97 @@ export default function EcoLeaderboard({
       {/* 4 Key Statistics Cards: Total Siswa Terdaftar, Siswa Aktif 1 Bulan, % Keaktifan Bulanan, Total Poin */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Siswa Terdaftar */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-[#74857B] uppercase tracking-wider truncate">
               Total Siswa Terdaftar
-            </p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-[#18352A] mt-1">
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-[#E8F9EE] border border-[#35C96F]/30 flex items-center justify-center text-[#159447] shrink-0">
+              <Users className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="my-1.5 min-w-0">
+            <p className="text-xl sm:text-2xl lg:text-xl xl:text-2xl font-black text-[#18352A] tracking-tight truncate">
               {monthlyActiveStats.totalStudents}{' '}
               <span className="text-xs font-normal text-[#74857B]">siswa</span>
             </p>
-            <p className="text-[11px] text-[#74857B] mt-1.5 flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-[#35C96F]" />
-              <span>Seluruh database sekolah</span>
-            </p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-[#E8F9EE] border border-[#35C96F]/30 flex items-center justify-center text-[#159447] shrink-0">
-            <Users className="w-6 h-6" />
-          </div>
+          <p className="text-[11px] text-[#74857B] truncate flex items-center gap-1">
+            <Users className="w-3 h-3 text-[#35C96F] shrink-0" />
+            <span className="truncate">Database sekolah</span>
+          </p>
         </div>
 
         {/* Siswa Aktif 1 Bulan Ini */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
-              Siswa Aktif (1 Bulan Ini)
-            </p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-[#159447] mt-1">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-[#74857B] uppercase tracking-wider truncate">
+              Siswa Aktif (30 Hari)
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#159447] shrink-0">
+              <UserCheck className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="my-1.5 min-w-0">
+            <p className="text-xl sm:text-2xl lg:text-xl xl:text-2xl font-black text-[#159447] tracking-tight truncate">
               {monthlyActiveStats.activeCount}{' '}
               <span className="text-xs font-normal text-[#74857B]">siswa</span>
             </p>
-            <p className="text-[11px] text-[#20A65A] font-semibold mt-1.5 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Aktif 30 hari terakhir</span>
-            </p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#159447] shrink-0">
-            <UserCheck className="w-6 h-6" />
-          </div>
+          <p className="text-[11px] text-[#20A65A] font-semibold truncate flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3 shrink-0" />
+            <span className="truncate">Aktif 30 hari terakhir</span>
+          </p>
         </div>
 
         {/* Persentase Siswa Aktif Bulanan */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-[#74857B] uppercase tracking-wider truncate">
               Keaktifan 1 Bulan Ini
-            </p>
-            <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-[#E8F9EE] text-[#159447] border border-[#35C96F]/30">
+            </span>
+            <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-[#E8F9EE] text-[#159447] border border-[#35C96F]/30 shrink-0">
               {monthlyActiveStats.percentage}%
             </span>
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-[#18352A] mt-1">
-            {monthlyActiveStats.percentage}%
-          </p>
-          {/* Progress bar visual */}
-          <div className="w-full bg-[#E5EEE7] h-2 rounded-full overflow-hidden mt-2">
-            <div
-              className="bg-[#35C96F] h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(0, monthlyActiveStats.percentage))}%` }}
-            />
+          <div className="my-1.5 min-w-0">
+            <p className="text-xl sm:text-2xl lg:text-xl xl:text-2xl font-black text-[#18352A] tracking-tight truncate">
+              {monthlyActiveStats.percentage}%
+            </p>
+            <div className="w-full bg-[#E5EEE7] h-2 rounded-full overflow-hidden mt-1.5">
+              <div
+                className="bg-[#35C96F] h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.max(0, monthlyActiveStats.percentage))}%` }}
+              />
+            </div>
           </div>
-          <p className="text-[10px] text-[#74857B] mt-1.5">
+          <p className="text-[10px] text-[#74857B] truncate">
             {monthlyActiveStats.activeCount} dari {monthlyActiveStats.totalStudents} siswa berpartisipasi
           </p>
         </div>
 
-        {/* Total Saldo Poin */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
+        {/* Total Poin Terkumpul */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-[#74857B] uppercase tracking-wider truncate">
               Total Poin Terkumpul
-            </p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-[#159447] mt-1">
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+              <Coins className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="my-1.5 min-w-0">
+            <p
+              className="text-xl sm:text-2xl lg:text-xl xl:text-2xl font-black text-[#159447] tracking-tight truncate"
+              title={`Rp${totalSchoolPoints.toLocaleString('id-ID')}`}
+            >
               Rp{totalSchoolPoints.toLocaleString('id-ID')}
             </p>
-            <p className="text-[11px] text-[#74857B] mt-1.5 flex items-center gap-1">
-              <Coins className="w-3.5 h-3.5 text-amber-500" />
-              <span>Akumulasi poin kontribusi</span>
-            </p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
-            <Coins className="w-6 h-6" />
-          </div>
+          <p className="text-[11px] text-[#74857B] truncate flex items-center gap-1">
+            <Coins className="w-3 h-3 text-amber-500 shrink-0" />
+            <span className="truncate">Akumulasi seluruh siswa</span>
+          </p>
         </div>
       </div>
 
