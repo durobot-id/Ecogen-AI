@@ -49,7 +49,7 @@ export default function AdminPage() {
       const [statsRes, studentsRes, txRes] = await Promise.all([
         fetch('/api/admin/dashboard'),
         fetch('/api/students'),
-        fetch('/api/transactions?limit=100'),
+        fetch('/api/transactions?limit=0'),
       ]);
 
       if (statsRes.status === 401 || statsRes.status === 403) {

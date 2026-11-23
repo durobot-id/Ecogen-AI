@@ -42,20 +42,29 @@ export default function EcoLeaderboard({
   const [classSortBy, setClassSortBy] = useState<'total' | 'average'>('total');
   const [internalTxList, setInternalTxList] = useState<Transaction[]>(transactions);
 
-  // If transactions prop was empty, fetch once to ensure accurate 30-day active data
+  // Ensure full transaction list is loaded for accurate 30-day active data
   useEffect(() => {
-    if (transactions.length > 0) {
+    let isMounted = true;
+    if (transactions.length > 500) {
       setInternalTxList(transactions);
     } else {
       fetch('/api/transactions?limit=0', { cache: 'no-store' })
         .then((res) => res.json())
         .then((json) => {
-          if (json.success && Array.isArray(json.data)) {
+          if (isMounted && json.success && Array.isArray(json.data)) {
             setInternalTxList(json.data);
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          if (isMounted && transactions.length > 0) {
+            setInternalTxList(transactions);
+          }
+        });
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [transactions]);
 
   // Unique class list
@@ -72,37 +81,36 @@ export default function EcoLeaderboard({
     return students.reduce((sum, s) => sum + (s.poin || 0), 0);
   }, [students]);
 
-  // Calculate 1 month (30-day) active student metrics
+  // Calculate 1 month (30-day) active student metrics based strictly on actions/transactions
   const monthlyActiveStats = useMemo(() => {
     const totalStudents = students.length;
-    const cutoff30d = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const cutoff30d = now - 30 * 24 * 60 * 60 * 1000;
 
-    // Collect UIDs of students with successful activity/transactions within 30 days
+    // Collect UIDs of students with successful actions/transactions within the last 30 days
     const activeUids = new Set<string>();
     internalTxList.forEach((tx) => {
-      if (tx.createdAt >= cutoff30d && tx.status === 'success' && tx.uid) {
-        activeUids.add(tx.uid.trim().toUpperCase());
+      // Parse transaction time properly (handles ms, seconds, or string timestamps)
+      let txTime = 0;
+      if (typeof tx.createdAt === 'number') {
+        txTime = tx.createdAt < 10000000000 ? tx.createdAt * 1000 : tx.createdAt;
+      } else if (tx.createdAt) {
+        txTime = new Date(tx.createdAt).getTime();
+      }
+
+      if (txTime >= cutoff30d) {
+        const isSuccess = !tx.status || tx.status === 'success';
+        const uid = (tx.uid || (tx as any).UID || '').trim().toUpperCase();
+        if (isSuccess && uid) {
+          activeUids.add(uid);
+        }
       }
     });
 
-    // Also include students created within 30 days
-    students.forEach((s) => {
-      if (s.createdAt && s.createdAt >= cutoff30d) {
-        activeUids.add(s.uid.trim().toUpperCase());
-      }
-    });
-
-    // Count how many active UIDs belong to current registered students
-    let activeCount = students.filter(
+    // Count how many currently registered students performed an action within 30 days
+    const activeCount = students.filter(
       (s) => activeUids.has(s.uid.trim().toUpperCase()) && (s.status || 'aktif') === 'aktif'
     ).length;
-
-    // Fallback if no transactions recorded yet in prototype database but students have points and are active
-    if (activeCount === 0 && totalStudents > 0) {
-      activeCount = students.filter(
-        (s) => (s.status || 'aktif') === 'aktif' && s.poin > 0
-      ).length;
-    }
 
     const percentage = totalStudents > 0 ? Math.round((activeCount / totalStudents) * 100) : 0;
 
@@ -270,7 +278,7 @@ export default function EcoLeaderboard({
           </div>
           <p className="text-[11px] text-[#20A65A] font-semibold truncate flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3 shrink-0" />
-            <span className="truncate">Aktif 30 hari terakhir</span>
+            <span className="truncate">Melakukan aksi 30 hari terakhir</span>
           </p>
         </div>
 
