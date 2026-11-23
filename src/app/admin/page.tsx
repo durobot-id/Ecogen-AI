@@ -165,6 +165,7 @@ export default function AdminPage() {
           {activeTab === 'leaderboard' && (
             <EcoLeaderboard
               students={students}
+              transactions={transactions}
               loading={loading}
               onOpenTopUp={handleOpenTopUp}
             />

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Trophy,
   Medal,
   Award,
   Users,
+  UserCheck,
   Search,
   Filter,
   ArrowUpRight,
@@ -15,11 +16,14 @@ import {
   School,
   Star,
   CheckCircle,
+  CheckCircle2,
+  Activity,
 } from 'lucide-react';
-import { Student } from '@/types';
+import { Student, Transaction } from '@/types';
 
 interface EcoLeaderboardProps {
   students: Student[];
+  transactions?: Transaction[];
   loading: boolean;
   onOpenTopUp: (student: Student) => void;
 }
@@ -28,6 +32,7 @@ type LeaderboardViewMode = 'individual' | 'class';
 
 export default function EcoLeaderboard({
   students,
+  transactions = [],
   loading,
   onOpenTopUp,
 }: EcoLeaderboardProps) {
@@ -35,6 +40,23 @@ export default function EcoLeaderboard({
   const [search, setSearch] = useState('');
   const [selectedClass, setSelectedClass] = useState('ALL');
   const [classSortBy, setClassSortBy] = useState<'total' | 'average'>('total');
+  const [internalTxList, setInternalTxList] = useState<Transaction[]>(transactions);
+
+  // If transactions prop was empty, fetch once to ensure accurate 30-day active data
+  useEffect(() => {
+    if (transactions.length > 0) {
+      setInternalTxList(transactions);
+    } else {
+      fetch('/api/transactions?limit=0', { cache: 'no-store' })
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.success && Array.isArray(json.data)) {
+            setInternalTxList(json.data);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [transactions]);
 
   // Unique class list
   const classList = useMemo(() => {
@@ -49,6 +71,47 @@ export default function EcoLeaderboard({
   const totalSchoolPoints = useMemo(() => {
     return students.reduce((sum, s) => sum + (s.poin || 0), 0);
   }, [students]);
+
+  // Calculate 1 month (30-day) active student metrics
+  const monthlyActiveStats = useMemo(() => {
+    const totalStudents = students.length;
+    const cutoff30d = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+    // Collect UIDs of students with successful activity/transactions within 30 days
+    const activeUids = new Set<string>();
+    internalTxList.forEach((tx) => {
+      if (tx.createdAt >= cutoff30d && tx.status === 'success' && tx.uid) {
+        activeUids.add(tx.uid.trim().toUpperCase());
+      }
+    });
+
+    // Also include students created within 30 days
+    students.forEach((s) => {
+      if (s.createdAt && s.createdAt >= cutoff30d) {
+        activeUids.add(s.uid.trim().toUpperCase());
+      }
+    });
+
+    // Count how many active UIDs belong to current registered students
+    let activeCount = students.filter(
+      (s) => activeUids.has(s.uid.trim().toUpperCase()) && (s.status || 'aktif') === 'aktif'
+    ).length;
+
+    // Fallback if no transactions recorded yet in prototype database but students have points and are active
+    if (activeCount === 0 && totalStudents > 0) {
+      activeCount = students.filter(
+        (s) => (s.status || 'aktif') === 'aktif' && s.poin > 0
+      ).length;
+    }
+
+    const percentage = totalStudents > 0 ? Math.round((activeCount / totalStudents) * 100) : 0;
+
+    return {
+      totalStudents,
+      activeCount,
+      percentage,
+    };
+  }, [students, internalTxList]);
 
   // Filtered & sorted individual students
   const rankedIndividuals = useMemo(() => {
@@ -162,6 +225,93 @@ export default function EcoLeaderboard({
             <School className="w-3.5 h-3.5" />
             <span>Peringkat Kelas</span>
           </button>
+        </div>
+      </div>
+
+      {/* 4 Key Statistics Cards: Total Siswa Terdaftar, Siswa Aktif 1 Bulan, % Keaktifan Bulanan, Total Poin */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Siswa Terdaftar */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
+              Total Siswa Terdaftar
+            </p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-[#18352A] mt-1">
+              {monthlyActiveStats.totalStudents}{' '}
+              <span className="text-xs font-normal text-[#74857B]">siswa</span>
+            </p>
+            <p className="text-[11px] text-[#74857B] mt-1.5 flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-[#35C96F]" />
+              <span>Seluruh database sekolah</span>
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-[#E8F9EE] border border-[#35C96F]/30 flex items-center justify-center text-[#159447] shrink-0">
+            <Users className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Siswa Aktif 1 Bulan Ini */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
+              Siswa Aktif (1 Bulan Ini)
+            </p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-[#159447] mt-1">
+              {monthlyActiveStats.activeCount}{' '}
+              <span className="text-xs font-normal text-[#74857B]">siswa</span>
+            </p>
+            <p className="text-[11px] text-[#20A65A] font-semibold mt-1.5 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Aktif 30 hari terakhir</span>
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#159447] shrink-0">
+            <UserCheck className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Persentase Siswa Aktif Bulanan */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
+              Keaktifan 1 Bulan Ini
+            </p>
+            <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-[#E8F9EE] text-[#159447] border border-[#35C96F]/30">
+              {monthlyActiveStats.percentage}%
+            </span>
+          </div>
+          <p className="text-2xl sm:text-3xl font-black text-[#18352A] mt-1">
+            {monthlyActiveStats.percentage}%
+          </p>
+          {/* Progress bar visual */}
+          <div className="w-full bg-[#E5EEE7] h-2 rounded-full overflow-hidden mt-2">
+            <div
+              className="bg-[#35C96F] h-full rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(100, Math.max(0, monthlyActiveStats.percentage))}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-[#74857B] mt-1.5">
+            {monthlyActiveStats.activeCount} dari {monthlyActiveStats.totalStudents} siswa berpartisipasi
+          </p>
+        </div>
+
+        {/* Total Saldo Poin */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5EEE7] shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-[#74857B] uppercase tracking-wider">
+              Total Poin Terkumpul
+            </p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-[#159447] mt-1">
+              Rp{totalSchoolPoints.toLocaleString('id-ID')}
+            </p>
+            <p className="text-[11px] text-[#74857B] mt-1.5 flex items-center gap-1">
+              <Coins className="w-3.5 h-3.5 text-amber-500" />
+              <span>Akumulasi poin kontribusi</span>
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
+            <Coins className="w-6 h-6" />
+          </div>
         </div>
       </div>
 
